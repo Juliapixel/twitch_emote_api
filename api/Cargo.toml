@@ -1,0 +1,26 @@
+[package]
+name = "api"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.7", features = ["http2"] }
+bytes = "1.7"
+clap = { version = "4.5.17", features = ["derive", "env"] }
+dashmap = "6.1"
+dotenvy = { version = "0.15.7", features = ["clap"] }
+futures = "0.3.30"
+hashbrown = { version = "0.14", features = ["serde"] }
+image = "0.25"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "gzip", "brotli", "deflate", "json"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde_json = "1.0"
+thiserror = "1.0"
+tokio = { version = "1.40", features = ["full"] }
+url = "2.5"
+
+# FUCK this library dawg
+# twitch_api = { version = "0.7.0-rc.7", features = ["client", "helix", "reqwest"] }
+
+[profile.dev.dependencies.image]
+optlevel = 3

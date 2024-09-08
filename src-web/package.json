@@ -1,0 +1,24 @@
+{
+	"name": "intro-example-threejs",
+	"private": false,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"start": "vite",
+		"build": "vite build",
+		"preview": "vite preview"
+	},
+	"devDependencies": {
+		"@types/three": "^0.168.0",
+		"@types/tmi.js": "^1.8.6",
+		"prettier": "^3.3.3",
+		"vite": "^5.4.3"
+	},
+	"dependencies": {
+		"three": "^0.168.0",
+		"tmi.js": "^1.8.5",
+		"twitch-chat-emotes": "^0.4.3",
+		"twitch-chat-emotes-threejs": "^0.4.3"
+	}
+}
