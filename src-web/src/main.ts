@@ -1,16 +1,16 @@
-import TwitchChat from "twitch-chat-emotes-threejs";
-import Chat from "twitch-chat-emotes";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import "./style.css";
 
+import {
+    Group,
+    PerspectiveCamera,
+    Scene,
+    Sprite,
+    SpriteMaterial,
+    Vector3,
+    WebGLRenderer
+} from "three";
 import { Client } from "tmi.js";
-import { Sprite } from "three";
-import { Vector3 } from "three";
-import { Group } from "three";
-import { SpriteMaterial } from "three";
-import { PerspectiveCamera } from "three";
-import { Scene } from "three";
-import { WebGLRenderer } from "three";
 
 /**
  * URL Parameters and configuration
