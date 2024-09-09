@@ -1,9 +1,12 @@
 use std::{io::Cursor, sync::Arc};
 
-use axum::http::{HeaderValue, Response};
+use axum::{body::Body, http::{HeaderValue, Response}, response::IntoResponse};
 use bytes::Bytes;
 use image::{AnimationDecoder, DynamicImage};
 use reqwest::header::CONTENT_TYPE;
+use serde::Serialize;
+
+use crate::platforms::{channel::ChannelEmote, Platform};
 
 pub const DEFAULT_IMAGE_FORMAT: image::ImageFormat = image::ImageFormat::WebP;
 
@@ -19,12 +22,6 @@ pub enum EmoteError {
     WrongMimeType(HeaderValue),
     #[error("request did not containt a Content-Type header")]
     MissingContentTypeHeader,
-}
-
-#[derive(Debug, Clone)]
-pub struct ChannelEmote {
-    pub name: String,
-    pub emote: Emote,
 }
 
 #[derive(Debug, Clone)]
@@ -103,6 +100,14 @@ pub struct Frame {
     data: Bytes,
 }
 
+impl IntoResponse for Frame {
+    fn into_response(self) -> axum::response::Response {
+        let mut resp = Response::new(Body::from(self.data));
+        resp.headers_mut().insert(CONTENT_TYPE, DEFAULT_IMAGE_FORMAT.to_mime_type().try_into().expect("this should never fail erm"));
+        resp
+    }
+}
+
 impl std::fmt::Debug for Frame {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Frame")
@@ -117,7 +122,10 @@ impl Frame {
         let mut resp = axum::response::Response::new(self.data.into());
         resp.headers_mut().insert(
             CONTENT_TYPE,
-            DEFAULT_IMAGE_FORMAT.to_mime_type().parse().unwrap(),
+            DEFAULT_IMAGE_FORMAT
+                .to_mime_type()
+                .parse()
+                .expect("image crate MIME types should always be ASCII"),
         );
         resp
     }
@@ -133,13 +141,14 @@ impl Frame {
             frame.buffer().write_to(&mut buf, DEFAULT_IMAGE_FORMAT)?;
             let buf = buf.into_inner();
 
+            // i love coding
+            let delay = std::time::Duration::from(frame.delay()).as_secs_f64();
+
             frames.push(Frame {
                 timestamp,
                 data: buf.into(),
             });
-
-            // why.
-            timestamp += std::time::Duration::from(frame.delay()).as_secs_f64()
+            timestamp += delay;
         }
         Ok(frames)
     }
@@ -157,5 +166,26 @@ impl TryFrom<DynamicImage> for Frame {
             timestamp: 0.0,
             data: buf.into(),
         })
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct EmoteInfo<'a> {
+    name: &'a str,
+    id: &'a str,
+    frame_count: usize,
+    platform: Platform,
+    frame_timestamps: Vec<f64>
+}
+
+impl<'a> EmoteInfo<'a> {
+    pub fn new(channel_info: &'a ChannelEmote, emote: &'a Emote) -> Self {
+        Self {
+            name: &channel_info.name,
+            id: &emote.id,
+            platform: channel_info.platform,
+            frame_count: emote.frames.len(),
+            frame_timestamps: emote.frames.iter().map(|f| f.timestamp).collect()
+        }
     }
 }
