@@ -1,11 +1,14 @@
 use api::{
-    cli::ARGS, emote::EmoteInfo, platforms::{EmoteManager, PlatformError}
+    cli::ARGS,
+    emote::EmoteInfo,
+    platforms::{EmoteManager, PlatformError},
 };
 use axum::{
     body::Body,
     extract::{Path, State},
     response::{IntoResponse, Response},
-    routing::get, Json,
+    routing::get,
+    Json,
 };
 use http::StatusCode;
 
@@ -21,10 +24,7 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
             "/emote/user/:channel/:name/:frame",
             get(channel_emote_frame),
         )
-        .route(
-            "/emote/user/:channel/:name",
-            get(channel_emote_info),
-        )
+        .route("/emote/user/:channel/:name", get(channel_emote_info))
         .route("/user/:username", get(emotes_by_username))
         .with_state(
             EmoteManager::new(ARGS.client_id.as_str(), ARGS.client_secret.as_str())
@@ -39,13 +39,20 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
     Ok(())
 }
 
-async fn emotes_by_username(Path(username): Path<String>, State(manager): State<EmoteManager>) -> Response {
-    manager.get_channel_emotes(&username).await.map(Json::from).into_response()
+async fn emotes_by_username(
+    Path(username): Path<String>,
+    State(manager): State<EmoteManager>,
+) -> Response {
+    manager
+        .get_channel_emotes(&username)
+        .await
+        .map(Json::from)
+        .into_response()
 }
 
 async fn channel_emote_frame(
     Path((channel, name, frame)): Path<(String, String, u32)>,
-    State(manager): State<EmoteManager>
+    State(manager): State<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     let emotes = manager.get_channel_emotes(&channel).await?;
     let info = emotes.get(&name).ok_or(PlatformError::EmoteNotFound)?;
@@ -59,7 +66,7 @@ async fn channel_emote_frame(
 
 async fn channel_emote_info(
     Path((channel, name)): Path<(String, String)>,
-    State(manager): State<EmoteManager>
+    State(manager): State<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     let emotes = manager.get_channel_emotes(&channel).await?;
     let info = emotes.get(&name).ok_or(PlatformError::EmoteNotFound)?;

@@ -6,7 +6,9 @@ use serde::Deserialize;
 
 use crate::{cache::Cache, emote::Emote};
 
-use super::{cache::platform_cache_evictor, PlatformError, EMOTE_CACHE_MAX_AGE, USER_CACHE_MAX_AGE};
+use super::{
+    cache::platform_cache_evictor, PlatformError, EMOTE_CACHE_MAX_AGE, USER_CACHE_MAX_AGE,
+};
 
 #[derive(Debug, Clone)]
 pub struct FfzClient {
@@ -24,7 +26,7 @@ impl FfzClient {
             Arc::downgrade(&user_cache),
             Duration::from_secs(60 * 15),
             Arc::downgrade(&emote_cache),
-            Duration::from_secs(60 * 15)
+            Duration::from_secs(60 * 15),
         ));
 
         Self {
@@ -34,23 +36,25 @@ impl FfzClient {
         }
     }
 
-    pub async fn get_channel_emotes(&self, twitch_id: &str) -> Result<Arc<RoomEmotes>, PlatformError> {
+    pub async fn get_channel_emotes(
+        &self,
+        twitch_id: &str,
+    ) -> Result<Arc<RoomEmotes>, PlatformError> {
         if let Some(hit) = self.user_cache.get(twitch_id) {
-            return Ok(hit.clone())
+            return Ok(hit.clone());
         }
 
-        let emotes: Arc<RoomEmotes> = Arc::new(self
-            .client
-            .get(format!(
-                "https://api.frankerfacez.com/v1/room/id/{twitch_id}"
-            ))
-            .send()
-            .await?
-            .json()
-            .await
-            .map_err(|e| e.without_url())?
+        let emotes: Arc<RoomEmotes> = Arc::new(
+            self.client
+                .get(format!(
+                    "https://api.frankerfacez.com/v1/room/id/{twitch_id}"
+                ))
+                .send()
+                .await?
+                .json()
+                .await
+                .map_err(|e| e.without_url())?,
         );
-
 
         self.user_cache.insert(twitch_id.into(), emotes.clone());
         Ok(emotes)

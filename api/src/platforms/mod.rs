@@ -45,10 +45,18 @@ impl IntoResponse for PlatformError {
         match self {
             PlatformError::ChannelNotFound => (StatusCode::NOT_FOUND, ()).into_response(),
             PlatformError::EmoteNotFound => (StatusCode::NOT_FOUND, ()).into_response(),
-            PlatformError::RequestFailure(_) => (StatusCode::BAD_GATEWAY, self.to_string()).into_response(),
-            PlatformError::PlatformError(_) => (StatusCode::BAD_GATEWAY, self.to_string()).into_response(),
-            PlatformError::Unauthorized(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response(),
-            PlatformError::DecodeError(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response(),
+            PlatformError::RequestFailure(_) => {
+                (StatusCode::BAD_GATEWAY, self.to_string()).into_response()
+            }
+            PlatformError::PlatformError(_) => {
+                (StatusCode::BAD_GATEWAY, self.to_string()).into_response()
+            }
+            PlatformError::Unauthorized(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+            }
+            PlatformError::DecodeError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+            }
         }
     }
 }
@@ -86,7 +94,7 @@ pub struct EmoteManager {
     seventv: SevenTvClient,
     ffz: FfzClient,
     bttv: BttvClient,
-    channel_emotes: ChannelEmotes
+    channel_emotes: ChannelEmotes,
 }
 
 impl EmoteManager {
@@ -112,7 +120,10 @@ impl EmoteManager {
         }
     }
 
-    pub async fn get_channel_emotes(&self, channel: &str) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
+    pub async fn get_channel_emotes(
+        &self,
+        channel: &str,
+    ) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
         self.channel_emotes.get_or_track(channel, self).await
     }
 }
@@ -129,7 +140,7 @@ mod cache {
         user_cache: Weak<Cache<K1, V1>>,
         user_cache_interval: Duration,
         emote_cache: Weak<Cache<K2, V2>>,
-        emote_cache_interval: Duration
+        emote_cache_interval: Duration,
     ) {
         let mut user_interval = tokio::time::interval(user_cache_interval);
         user_interval.set_missed_tick_behavior(MissedTickBehavior::Delay);

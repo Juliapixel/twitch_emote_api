@@ -19,6 +19,6 @@ pub struct Args {
     #[arg(long, env = "TWITCH_CLIENT_SECRET", hide_env_values(true))]
     pub client_secret: String,
     /// port to listen on
-    #[arg(long, default_value_t=8080)]
-    pub port: u16
+    #[arg(long, default_value_t = 8080)]
+    pub port: u16,
 }

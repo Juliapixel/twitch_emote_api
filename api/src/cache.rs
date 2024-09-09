@@ -1,6 +1,9 @@
 use std::{borrow::Borrow, hash::Hash};
 
-use dashmap::{mapref::one::{MappedRef, MappedRefMut}, DashMap};
+use dashmap::{
+    mapref::one::{MappedRef, MappedRefMut},
+    DashMap,
+};
 
 #[derive(Debug, Clone)]
 pub struct Cache<K: Hash + Eq, V: Sized> {
@@ -25,7 +28,7 @@ impl<K: Hash + Eq, V: Sized> Cache<K, V> {
             if std::time::Instant::now() > hit.added_timestamp + self.max_age {
                 drop(hit);
                 self.map.remove(key);
-                return None
+                return None;
             }
             Some(hit.map(|r| &r.data))
         } else {
@@ -40,7 +43,7 @@ impl<K: Hash + Eq, V: Sized> Cache<K, V> {
     {
         if let Some(hit) = self.map.get_mut(key) {
             if std::time::Instant::now() > hit.added_timestamp + self.max_age {
-                return None
+                return None;
             }
             Some(hit.map(|r| &mut r.data))
         } else {
@@ -59,7 +62,8 @@ impl<K: Hash + Eq, V: Sized> Cache<K, V> {
 
     pub fn evict_stale(&self) {
         let now = std::time::Instant::now();
-        self.map.retain(|_, v| now < v.added_timestamp + self.max_age)
+        self.map
+            .retain(|_, v| now < v.added_timestamp + self.max_age)
     }
 
     /// gulp

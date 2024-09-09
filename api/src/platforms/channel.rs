@@ -47,11 +47,20 @@ impl ChannelEmotes {
                 );
 
                 if let Ok(resp) = seventv_resp {
-                    emotes.extend(resp.emote_set.emotes.iter().map(|e| (e.name.clone(), e.into())))
+                    emotes.extend(
+                        resp.emote_set
+                            .emotes
+                            .iter()
+                            .map(|e| (e.name.clone(), e.into())),
+                    )
                 }
 
                 if let Ok(resp) = bttv_resp {
-                    emotes.extend(resp.shared_emotes.iter().map(|e| (e.code.clone(), e.into())))
+                    emotes.extend(
+                        resp.shared_emotes
+                            .iter()
+                            .map(|e| (e.code.clone(), e.into())),
+                    )
                 }
 
                 if let Ok(resp) = ffz_resp {
@@ -70,7 +79,6 @@ impl ChannelEmotes {
         }
     }
 }
-
 
 impl From<SevenTvEmote> for ChannelEmote {
     fn from(value: SevenTvEmote) -> Self {

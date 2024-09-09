@@ -1,6 +1,10 @@
 use std::{io::Cursor, sync::Arc};
 
-use axum::{body::Body, http::{HeaderValue, Response}, response::IntoResponse};
+use axum::{
+    body::Body,
+    http::{HeaderValue, Response},
+    response::IntoResponse,
+};
 use bytes::Bytes;
 use image::{AnimationDecoder, DynamicImage};
 use reqwest::header::CONTENT_TYPE;
@@ -103,7 +107,13 @@ pub struct Frame {
 impl IntoResponse for Frame {
     fn into_response(self) -> axum::response::Response {
         let mut resp = Response::new(Body::from(self.data));
-        resp.headers_mut().insert(CONTENT_TYPE, DEFAULT_IMAGE_FORMAT.to_mime_type().try_into().expect("this should never fail erm"));
+        resp.headers_mut().insert(
+            CONTENT_TYPE,
+            DEFAULT_IMAGE_FORMAT
+                .to_mime_type()
+                .try_into()
+                .expect("this should never fail erm"),
+        );
         resp
     }
 }
@@ -175,7 +185,7 @@ pub struct EmoteInfo<'a> {
     id: &'a str,
     frame_count: usize,
     platform: Platform,
-    frame_timestamps: Vec<f64>
+    frame_timestamps: Vec<f64>,
 }
 
 impl<'a> EmoteInfo<'a> {
@@ -185,7 +195,7 @@ impl<'a> EmoteInfo<'a> {
             id: &emote.id,
             platform: channel_info.platform,
             frame_count: emote.frames.len(),
-            frame_timestamps: emote.frames.iter().map(|f| f.timestamp).collect()
+            frame_timestamps: emote.frames.iter().map(|f| f.timestamp).collect(),
         }
     }
 }

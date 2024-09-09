@@ -1,4 +1,7 @@
-use std::{sync::{Arc, LazyLock}, time::Duration};
+use std::{
+    sync::{Arc, LazyLock},
+    time::Duration,
+};
 
 use http::{HeaderName, HeaderValue};
 use log::info;
@@ -17,7 +20,7 @@ pub struct TwitchClient {
     client_id: Arc<str>,
     client_secret: Arc<str>,
     token: Arc<str>,
-    user_id_cache: Arc<Cache<String, String>>
+    user_id_cache: Arc<Cache<String, String>>,
 }
 
 impl std::fmt::Debug for TwitchClient {
@@ -32,7 +35,10 @@ impl std::fmt::Debug for TwitchClient {
 }
 
 impl TwitchClient {
-    pub async fn new(client_id: impl Into<Arc<str>>, client_secret: impl Into<Arc<str>>) -> Result<Self, PlatformError> {
+    pub async fn new(
+        client_id: impl Into<Arc<str>>,
+        client_secret: impl Into<Arc<str>>,
+    ) -> Result<Self, PlatformError> {
         #[allow(clippy::unwrap_used, reason = "if this breaks i'll kms")]
         static OAUTH_URL: LazyLock<url::Url> =
             LazyLock::new(|| url::Url::parse("https://id.twitch.tv/oauth2/token").unwrap());
@@ -81,7 +87,7 @@ impl TwitchClient {
                     if let Some(cache) = cache.upgrade() {
                         cache.evict_stale()
                     } else {
-                        return
+                        return;
                     }
                 }
             }
@@ -92,7 +98,7 @@ impl TwitchClient {
             client_id,
             client_secret,
             token: token.into(),
-            user_id_cache: cache
+            user_id_cache: cache,
         })
     }
 
@@ -103,7 +109,7 @@ impl TwitchClient {
 
         if let Some(hit) = self.user_id_cache.get(channel) {
             info!("twitch id cache hit for {channel}");
-            return Ok(hit.clone())
+            return Ok(hit.clone());
         }
 
         info!("requesting user id for {channel}");
@@ -124,7 +130,7 @@ impl TwitchClient {
                     .id;
                 self.user_id_cache.insert(channel.into(), id.clone());
                 Ok(id)
-            },
+            }
             StatusCode::UNAUTHORIZED => Err(PlatformError::Unauthorized(Platform::Twitch)),
             StatusCode::NOT_FOUND => Err(PlatformError::ChannelNotFound),
             _ => Err(PlatformError::PlatformError(Platform::Twitch)),
