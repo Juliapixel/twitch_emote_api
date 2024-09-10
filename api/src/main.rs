@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use api::{
     cli::ARGS,
     emote::EmoteInfo,
@@ -10,7 +12,8 @@ use axum::{
     routing::get,
     Json,
 };
-use http::StatusCode;
+use http::{header::CACHE_CONTROL, HeaderValue, StatusCode};
+use regex::Regex;
 
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
@@ -21,18 +24,30 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
 
     let app = axum::Router::new()
         .route(
-            "/emote/user/:channel/:name/:frame",
+            "/emote/:channel/:name/:frame",
             get(channel_emote_frame),
         )
-        .route("/emote/user/:channel/:name", get(channel_emote_info))
-        .route("/user/:username", get(emotes_by_username))
+        .route(
+            "/emote/:channel/:name",
+            get(channel_emote_info),
+        )
+        .route(
+            "/user/:username",
+            get(emotes_by_username)
+            .route_layer(
+                tower_http::compression::CompressionLayer::new()
+                    .gzip(true)
+                    .br(true)
+            )
+        )
+        .layer(tower_http::cors::CorsLayer::permissive())
         .with_state(
             EmoteManager::new(ARGS.client_id.as_str(), ARGS.client_secret.as_str())
                 .await
                 .unwrap(),
         );
 
-    let socket = tokio::net::TcpListener::bind((std::net::Ipv6Addr::UNSPECIFIED, 8080)).await?;
+    let socket = tokio::net::TcpListener::bind((std::net::Ipv6Addr::UNSPECIFIED, ARGS.port)).await?;
 
     axum::serve(socket, app).await?;
 
@@ -51,26 +66,56 @@ async fn emotes_by_username(
 }
 
 async fn channel_emote_frame(
-    Path((channel, name, frame)): Path<(String, String, u32)>,
+    Path((channel, name, frame)): Path<(String, String, String)>,
     State(manager): State<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
-    let emotes = manager.get_channel_emotes(&channel).await?;
-    let info = emotes.get(&name).ok_or(PlatformError::EmoteNotFound)?;
-    let emote = manager.get_emote(info.platform, &info.id).await?;
+    static WEBP_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"\d+\.").unwrap()
+    });
 
-    match emote.frames.get(frame as usize) {
-        Some(frame) => Ok(frame.clone().into_response()),
-        None => Ok((StatusCode::NOT_FOUND, ()).into_response()),
+    let frame_requested = frame.to_lowercase();
+    if !frame.ends_with(".webp") {
+        return Err(PlatformError::EmoteNotFound)
     }
+
+    let number = frame_requested[0..frame_requested.len()-5].parse::<u32>();
+
+    match number {
+        Ok(frame) => {
+            let emotes = manager.get_channel_emotes(&channel).await?;
+            let info = emotes.get(&name).ok_or(PlatformError::EmoteNotFound)?;
+            let emote = manager.get_emote(info.platform, &info.id).await?;
+
+            match emote.frames.get(frame as usize) {
+                Some(frame) => Ok(frame.clone().into_response()),
+                None => Ok((StatusCode::NOT_FOUND, ()).into_response()),
+            }
+        },
+        Err(e) => Err(PlatformError::EmoteNotFound),
+    }
+
+
 }
 
 async fn channel_emote_info(
     Path((channel, name)): Path<(String, String)>,
     State(manager): State<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
+    static CACHE_HEADER: LazyLock<HeaderValue> = LazyLock::new(|| {
+        format!("max-age={}, public", {60 * 60 * 15}).try_into().expect("oh no")
+    });
+
     let emotes = manager.get_channel_emotes(&channel).await?;
     let info = emotes.get(&name).ok_or(PlatformError::EmoteNotFound)?;
     let emote = manager.get_emote(info.platform, &info.id).await?;
 
-    Ok(Json::from(EmoteInfo::new(info.value(), &emote)).into_response())
+    let mut resp = Json::from(EmoteInfo::new(info.value(), &emote)).into_response();
+
+    resp
+        .headers_mut()
+        .insert(
+            CACHE_CONTROL,
+            CACHE_HEADER.clone()
+        );
+    Ok(resp)
 }

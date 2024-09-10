@@ -3,14 +3,21 @@ import "./style.css";
 
 import {
     Group,
+    LoadingManager,
+    Mesh,
     PerspectiveCamera,
+    PlaneGeometry,
     Scene,
     Sprite,
     SpriteMaterial,
+    SRGBColorSpace,
+    TextureLoader,
     Vector3,
     WebGLRenderer
 } from "three";
 import { Client } from "tmi.js";
+import { ChannelEmote, EmotesClient } from "./lib";
+import { EmoteMaterial } from "./lib/material";
 
 /**
  * URL Parameters and configuration
@@ -49,7 +56,7 @@ const camera = new PerspectiveCamera(
 camera.position.z = 5;
 
 const scene = new Scene();
-const renderer = new WebGLRenderer({ antialias: false });
+const renderer = new WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 
 // separate from three.js hierarchy, we want to keep track of emotes
@@ -98,6 +105,9 @@ function draw() {
             sceneEmoteArray.splice(index, 1);
             scene.remove(element);
         } else {
+            if (element.update) {
+                element.update()
+            }
             element.updateMatrix();
         }
     }
@@ -110,42 +120,59 @@ function draw() {
  ** Twitch chat configuration
  */
 
-const chat = new Client({ channels: channels });
-chat.connect();
-chat.on("message", (channel, state, msg, self) => {
-    console.log(`${state["display-name"]}: ${msg}`);
-});
+let client = new EmotesClient({channels: channels});
+client.on("emote", (emotes, channel) => {
+    spawnEmote(emotes, channel)
+})
 
 /*
  ** Handle Twitch Chat Emotes
  */
-const spawnEmote = (emotes) => {
+const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
     //prevent lag caused by emote buildup when you tab out from the page for a while
     if (performance.now() - lastFrame > 1000) return;
 
     const group = new Group();
+    group.position.setZ(-3)
     group.data = {
         lifespan: 5000,
         timestamp: Date.now(),
         velocity: new Vector3(
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2,
-            (Math.random() - 0.5) * 2
-        ).normalize()
+            (Math.random() - 0.5),
+            (Math.random() - 0.5),
+            (Math.random() - 0.5),
+        ).normalize().multiply(new Vector3(3, 3, 1))
     };
 
     let i = 0;
-    emotes.forEach((emote) => {
-        const sprite = new Sprite(emote.material);
-        // ensure emotes from the same message don't overlap each other
-        sprite.position.x = i;
 
-        group.add(sprite);
+    let loader = new TextureLoader(new LoadingManager());
+    for (const emote of emotes.slice(0, 8)) {
+        let tex = loader.load(`https://overlay-api.juliapixel.com/emote/${channel}/${emote.name}/0.webp`, (text) => {
+            tex.colorSpace = SRGBColorSpace;
+            let mat = new EmoteMaterial(channel, emote, (mat) => {
+                let sprite = new Mesh(
+                    new PlaneGeometry(),
+                    mat
+                )
+                sprite.scale.x = mat.aspectRatio;
+                // ensure emotes from the same message don't overlap each other
+                sprite.position.x = (Math.random() * 4) - 2;
+                sprite.position.y = (Math.random() * 4) - 2;
+                sprite.position.z = (Math.random() * 4) - 2;
+
+                group.add(sprite);
+            })
+        })
         i++;
-    });
+    }
 
     group.update = () => {
-        // called every frame
+        for (let child of group.children) {
+            if (child instanceof Mesh && child.material instanceof EmoteMaterial) {
+                child.material.animateTexture(performance.now() / 1000)
+            }
+        }
         let progress = (Date.now() - group.data.timestamp) / group.data.lifespan;
         if (progress < 0.25) {
             // grow to full size in first quarter
@@ -163,7 +190,6 @@ const spawnEmote = (emotes) => {
     sceneEmoteArray.push(group);
 };
 
-// ChatInstance.listen(spawnEmote);
 
 // spawn some fake emotes for testing purposes
 const placeholder_mats = [
@@ -171,11 +197,11 @@ const placeholder_mats = [
     new SpriteMaterial({ color: 0x44ff44 }),
     new SpriteMaterial({ color: 0x4444ff })
 ];
-setInterval(() => {
-    spawnEmote([
-        {
-            material:
-                placeholder_mats[Math.floor(Math.random() * placeholder_mats.length)]
-        }
-    ]);
-}, 1000);
+// setInterval(() => {
+//     spawnEmote([
+//         {
+//             material:
+//                 placeholder_mats[Math.floor(Math.random() * placeholder_mats.length)]
+//         }
+//     ]);
+// }, 1000);

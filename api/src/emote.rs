@@ -1,4 +1,4 @@
-use std::{io::Cursor, sync::Arc};
+use std::{io::Cursor, sync::{Arc, LazyLock}};
 
 use axum::{
     body::Body,
@@ -6,6 +6,7 @@ use axum::{
     response::IntoResponse,
 };
 use bytes::Bytes;
+use http::header::CACHE_CONTROL;
 use image::{AnimationDecoder, DynamicImage};
 use reqwest::header::CONTENT_TYPE;
 use serde::Serialize;
@@ -47,8 +48,9 @@ impl Emote {
                 Frame::try_from_iter(decoder.into_frames())?.into()
             }
             Format::WebP => {
-                let decoder = image::codecs::webp::WebPDecoder::new(Cursor::new(data))?;
+                let mut decoder = image::codecs::webp::WebPDecoder::new(Cursor::new(data))?;
                 if decoder.has_animation() {
+                    decoder.set_background_color(image::Rgba([0; 4]))?;
                     Frame::try_from_iter(decoder.into_frames())?.into()
                 } else {
                     [Frame::try_from(image::load_from_memory_with_format(
@@ -100,12 +102,16 @@ impl Emote {
 
 #[derive(Clone)]
 pub struct Frame {
-    pub timestamp: f64,
+    pub delay: f64,
     data: Bytes,
 }
 
 impl IntoResponse for Frame {
     fn into_response(self) -> axum::response::Response {
+        static CACHE_HEADER: LazyLock<HeaderValue> = LazyLock::new(|| {
+            format!("max-age={}, public", {60 * 60 * 15}).try_into().expect("oh no")
+        });
+
         let mut resp = Response::new(Body::from(self.data));
         resp.headers_mut().insert(
             CONTENT_TYPE,
@@ -114,6 +120,10 @@ impl IntoResponse for Frame {
                 .try_into()
                 .expect("this should never fail erm"),
         );
+        resp.headers_mut().insert(
+            CACHE_CONTROL,
+            CACHE_HEADER.clone()
+        );
         resp
     }
 }
@@ -121,29 +131,16 @@ impl IntoResponse for Frame {
 impl std::fmt::Debug for Frame {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Frame")
-            .field("timestamp", &self.timestamp)
+            .field("delay", &self.delay)
             .field("data", &"just a bunch of bytes...")
             .finish()
     }
 }
 
 impl Frame {
-    pub fn into_response(self) -> Response<axum::body::Body> {
-        let mut resp = axum::response::Response::new(self.data.into());
-        resp.headers_mut().insert(
-            CONTENT_TYPE,
-            DEFAULT_IMAGE_FORMAT
-                .to_mime_type()
-                .parse()
-                .expect("image crate MIME types should always be ASCII"),
-        );
-        resp
-    }
-
     fn try_from_iter(
         iter: impl IntoIterator<Item = Result<image::Frame, image::ImageError>>,
     ) -> Result<Vec<Self>, image::ImageError> {
-        let mut timestamp: f64 = 0.0;
         let mut frames = Vec::new();
         for i in iter {
             let frame = i?;
@@ -155,10 +152,9 @@ impl Frame {
             let delay = std::time::Duration::from(frame.delay()).as_secs_f64();
 
             frames.push(Frame {
-                timestamp,
+                delay,
                 data: buf.into(),
             });
-            timestamp += delay;
         }
         Ok(frames)
     }
@@ -173,7 +169,7 @@ impl TryFrom<DynamicImage> for Frame {
         let buf = buf.into_inner();
 
         Ok(Self {
-            timestamp: 0.0,
+            delay: f64::MAX,
             data: buf.into(),
         })
     }
@@ -185,7 +181,7 @@ pub struct EmoteInfo<'a> {
     id: &'a str,
     frame_count: usize,
     platform: Platform,
-    frame_timestamps: Vec<f64>,
+    frame_delays: Vec<f64>,
 }
 
 impl<'a> EmoteInfo<'a> {
@@ -195,7 +191,7 @@ impl<'a> EmoteInfo<'a> {
             id: &emote.id,
             platform: channel_info.platform,
             frame_count: emote.frames.len(),
-            frame_timestamps: emote.frames.iter().map(|f| f.timestamp).collect(),
+            frame_delays: emote.frames.iter().map(|f| f.delay).collect(),
         }
     }
 }
