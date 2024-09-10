@@ -106,7 +106,7 @@ function draw() {
             scene.remove(element);
         } else {
             if (element.update) {
-                element.update()
+                element.update();
             }
             element.updateMatrix();
         }
@@ -120,10 +120,10 @@ function draw() {
  ** Twitch chat configuration
  */
 
-let client = new EmotesClient({channels: channels});
+let client = new EmotesClient({ channels: channels });
 client.on("emote", (emotes, channel) => {
-    spawnEmote(emotes, channel)
-})
+    spawnEmote(emotes, channel);
+});
 
 /*
  ** Handle Twitch Chat Emotes
@@ -133,44 +133,46 @@ const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
     if (performance.now() - lastFrame > 1000) return;
 
     const group = new Group();
-    group.position.setZ(-3)
+    group.position.setZ(-3);
     group.data = {
         lifespan: 5000,
         timestamp: Date.now(),
         velocity: new Vector3(
-            (Math.random() - 0.5),
-            (Math.random() - 0.5),
-            (Math.random() - 0.5),
-        ).normalize().multiply(new Vector3(3, 3, 1))
+            Math.random() - 0.5,
+            Math.random() - 0.5,
+            Math.random() - 0.5
+        )
+            .normalize()
+            .multiply(new Vector3(3, 3, 1))
     };
 
     let i = 0;
 
     let loader = new TextureLoader(new LoadingManager());
     for (const emote of emotes.slice(0, 8)) {
-        let tex = loader.load(`https://overlay-api.juliapixel.com/emote/${channel}/${emote.name}/0.webp`, (text) => {
-            tex.colorSpace = SRGBColorSpace;
-            let mat = new EmoteMaterial(channel, emote, (mat) => {
-                let sprite = new Mesh(
-                    new PlaneGeometry(),
-                    mat
-                )
-                sprite.scale.x = mat.aspectRatio;
-                // ensure emotes from the same message don't overlap each other
-                sprite.position.x = (Math.random() * 4) - 2;
-                sprite.position.y = (Math.random() * 4) - 2;
-                sprite.position.z = (Math.random() * 4) - 2;
+        let tex = loader.load(
+            `https://overlay-api.juliapixel.com/emote/${channel}/${emote.name}/0.webp`,
+            (text) => {
+                tex.colorSpace = SRGBColorSpace;
+                let mat = new EmoteMaterial(channel, emote, (mat) => {
+                    let sprite = new Mesh(new PlaneGeometry(), mat);
+                    sprite.scale.x = mat.aspectRatio;
+                    // ensure emotes from the same message don't overlap each other
+                    sprite.position.x = Math.random() * 4 - 2;
+                    sprite.position.y = Math.random() * 4 - 2;
+                    sprite.position.z = Math.random() * 4 - 2;
 
-                group.add(sprite);
-            })
-        })
+                    group.add(sprite);
+                });
+            }
+        );
         i++;
     }
 
     group.update = () => {
         for (let child of group.children) {
             if (child instanceof Mesh && child.material instanceof EmoteMaterial) {
-                child.material.animateTexture(performance.now() / 1000)
+                child.material.animateTexture(performance.now() / 1000);
             }
         }
         let progress = (Date.now() - group.data.timestamp) / group.data.lifespan;
@@ -189,7 +191,6 @@ const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
     scene.add(group);
     sceneEmoteArray.push(group);
 };
-
 
 // spawn some fake emotes for testing purposes
 const placeholder_mats = [
