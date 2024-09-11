@@ -128,7 +128,7 @@ impl EmoteManager {
             Platform::Twitch => todo!(),
             Platform::SevenTv => self.seventv.get_emote_by_id(id).await,
             Platform::BetterTtv => self.bttv.get_emote_by_id(id).await,
-            Platform::FrancerFaceZ => todo!(),
+            Platform::FrancerFaceZ => self.ffz.get_emote_by_id(id).await,
         }
     }
 
@@ -227,11 +227,13 @@ mod tests {
     async fn ffz_test() {
         // LilZ
         const STATIC_EMOTE_ID: &str = "28136";
+        const ANIMATED_EMOTE_ID: &str = "725695";
 
         let client = FfzClient::new();
         client.get_channel_emotes(TWITCH_ID).await.unwrap();
 
         client.get_emote_by_id(STATIC_EMOTE_ID).await.unwrap();
+        client.get_emote_by_id(ANIMATED_EMOTE_ID).await.unwrap();
 
         client.get_global_emotes().await.unwrap();
     }

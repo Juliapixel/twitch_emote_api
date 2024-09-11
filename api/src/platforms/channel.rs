@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use dashmap::DashMap;
+use log::error;
 use serde::Serialize;
 
 use crate::platforms::EmotePlatform;
@@ -48,30 +49,29 @@ impl ChannelEmotes {
                     manager.ffz.get_channel_emotes(&user_id)
                 );
 
-                if let Ok(resp) = seventv_resp {
-                    emotes.extend(
-                        resp.emote_set
-                            .emotes
-                            .iter()
-                            .map(|e| (e.name.clone(), e.into())),
-                    )
+                match seventv_resp {
+                    Ok(resp) => {
+                        emotes.extend(
+                            resp.into_iter().map(|e| (e.name.clone(), e)),
+                        )
+                    },
+                    Err(e) => error!("{e}"),
                 }
-
-                if let Ok(resp) = bttv_resp {
-                    emotes.extend(
-                        resp.shared_emotes
-                            .iter()
-                            .map(|e| (e.code.clone(), e.into())),
-                    )
+                match bttv_resp {
+                    Ok(resp) => {
+                        emotes.extend(
+                            resp.into_iter().map(|e| (e.name.clone(), e)),
+                        )
+                    },
+                    Err(e) => error!("{e}"),
                 }
-
-                if let Ok(resp) = ffz_resp {
-                    emotes.extend(
-                        resp.sets
-                            .iter()
-                            .flat_map(|(_, set)| &set.emoticons)
-                            .map(|e| (e.name.clone(), e.into())),
-                    )
+                match ffz_resp {
+                    Ok(resp) => {
+                        emotes.extend(
+                            resp.into_iter().map(|e| (e.name.clone(), e)),
+                        )
+                    },
+                    Err(e) => error!("{e}"),
                 }
 
                 let emotes: Arc<DashMap<String, ChannelEmote>> = emotes.into();
@@ -126,7 +126,7 @@ impl From<FfzEmote> for ChannelEmote {
     fn from(value: FfzEmote) -> Self {
         Self {
             platform: Platform::FrancerFaceZ,
-            id: value.id.to_string(),
+            id: value.id.map_left(|id| id.to_string()).into_inner(),
             name: value.name,
         }
     }
@@ -136,7 +136,7 @@ impl From<&FfzEmote> for ChannelEmote {
     fn from(value: &FfzEmote) -> Self {
         Self {
             platform: Platform::FrancerFaceZ,
-            id: value.id.clone().to_string(),
+            id: value.id.clone().map_left(|id| id.to_string()).into_inner(),
             name: value.name.clone(),
         }
     }

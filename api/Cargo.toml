@@ -12,6 +12,7 @@ bytes = "1.7"
 clap = { version = "4.5", features = ["derive", "env"] }
 dashmap = { version = "6.1", features = ["serde"] }
 dotenvy = { version = "0.15", features = ["clap"] }
+either = { version = "1.13", features = ["serde"] }
 env_logger = "0.11"
 futures = "0.3"
 hashbrown = { version = "0.14", features = ["serde"] }

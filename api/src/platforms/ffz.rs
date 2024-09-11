@@ -1,8 +1,9 @@
 use std::{sync::Arc, time::{Duration, Instant}};
 
 use hashbrown::HashMap;
+use http::StatusCode;
 use reqwest::header::ACCEPT;
-use serde::Deserialize;
+use serde::{de::IgnoredAny, Deserialize};
 use tokio::sync::OnceCell;
 
 use crate::{cache::Cache, emote::Emote, platforms::channel::ChannelEmote};
@@ -36,46 +37,6 @@ impl FfzClient {
             user_cache,
         }
     }
-
-    pub async fn get_channel_emotes(
-        &self,
-        twitch_id: &str,
-    ) -> Result<Arc<RoomEmotes>, PlatformError> {
-        if let Some(hit) = self.user_cache.get(twitch_id) {
-            return Ok(hit.clone());
-        }
-
-        let emotes: Arc<RoomEmotes> = Arc::new(
-            self.client
-                .get(format!(
-                    "https://api.frankerfacez.com/v1/room/id/{twitch_id}"
-                ))
-                .send()
-                .await?
-                .json()
-                .await
-                .map_err(|e| e.without_url())?,
-        );
-
-        self.user_cache.insert(twitch_id.into(), emotes.clone());
-        Ok(emotes)
-    }
-
-    pub async fn get_emote_by_id(&self, id: &str) -> Result<Emote, PlatformError> {
-        if let Some(hit) = self.emote_cache.get(id) {
-            return Ok(hit.clone());
-        }
-
-        let resp = self
-            .client
-            .get(format!("https://cdn.frankerfacez.com/emote/{id}/4"))
-            .header(ACCEPT, "image/png, image/webp, image/gif")
-            .send()
-            .await
-            .map_err(|e| e.without_url())?;
-
-        Ok(Emote::try_from_response(resp, id).await?)
-    }
 }
 
 impl EmotePlatform for FfzClient {
@@ -88,16 +49,14 @@ impl EmotePlatform for FfzClient {
             return Ok(hit.clone());
         }
 
-        let emotes: Arc<RoomEmotes> = Arc::new(
-            self.client
-                .get(format!(
-                    "https://api.frankerfacez.com/v1/room/id/{twitch_id}"
-                ))
-                .send()
-                .await?
-                .json()
-                .await
-                .map_err(|e| e.without_url())?,
+        let emotes = Arc::new(self.client
+            .get(format!(
+                "https://api.frankerfacez.com/v1/room/id/{twitch_id}"
+            ))
+            .send()
+            .await?
+            .json::<RoomEmotes>()
+            .await?
         );
 
         self.user_cache.insert(twitch_id.into(), emotes.clone());
@@ -109,10 +68,27 @@ impl EmotePlatform for FfzClient {
             return Ok(hit.clone());
         }
 
+        let emote_query = self
+            .client
+            .get(format!("https://api.frankerfacez.com/v1/emote/{id}"))
+            .send()
+            .await
+            .map_err(|e| e.without_url())?;
+
+        if emote_query.status() == StatusCode::NOT_FOUND {
+            return Err(PlatformError::EmoteNotFound)
+        }
+
+        let url = if emote_query.json::<FfzEmoteQuery>().await?.emote.animated.is_some() {
+            format!("https://cdn.frankerfacez.com/emote/{id}/animated/4")
+        } else {
+            format!("https://cdn.frankerfacez.com/emote/{id}/4")
+        };
+
         let resp = self
             .client
-            .get(format!("https://cdn.frankerfacez.com/emote/{id}/4"))
-            .header(ACCEPT, "image/png, image/webp, image/gif")
+            .get(url)
+            .header(ACCEPT, "image/webp, image/png, image/gif")
             .send()
             .await
             .map_err(|e| e.without_url())?;
@@ -158,9 +134,34 @@ pub struct DefaultSets {
     sets: HashMap<String, FfzSet>
 }
 
+#[test]
+fn ffz_test_deser() {
+    const TEST: &str = "{\"room\":{\"_id\":1459859,\"twitch_id\":173685614,\"youtube_id\":null,\"id\":\"julialuxel\",\"is_group\":false,\"display_name\":\"Julialuxel\",\"set\":1459881,\"moderator_badge\":null,\"vip_badge\":null,\"mod_urls\":null,\"user_badges\":{},\"user_badge_ids\":{},\"css\":null},\"sets\":{\"1459881\":{\"id\":1459881,\"_type\":1,\"icon\":null,\"title\":\"Channel: Julialuxel\",\"css\":null,\"emoticons\":[{\"id\":725695,\"name\":\"Joel\",\"height\":32,\"width\":96,\"public\":true,\"hidden\":false,\"modifier\":false,\"modifier_flags\":0,\"offset\":null,\"margins\":null,\"css\":null,\"owner\":{\"_id\":1363844,\"name\":\"rodskaden\",\"display_name\":\"RodsKaden\"},\"artist\":null,\"urls\":{\"1\":\"https://cdn.frankerfacez.com/emote/725695/1\",\"2\":\"https://cdn.frankerfacez.com/emote/725695/2\",\"4\":\"https://cdn.frankerfacez.com/emote/725695/4\"},\"animated\":{\"1\":\"https://cdn.frankerfacez.com/emote/725695/animated/1\",\"2\":\"https://cdn.frankerfacez.com/emote/725695/animated/2\",\"4\":\"https://cdn.frankerfacez.com/emote/725695/animated/4\"},\"status\":1,\"usage_count\":76,\"created_at\":\"2023-04-15T14:00:09.398Z\",\"last_updated\":\"2023-04-15T14:35:57.027Z\"}]}}}";
+
+    match serde_json::from_str::<RoomEmotes>(TEST) {
+        Ok(_) => (),
+        Err(e) => {
+            eprintln!("{}", &TEST[(e.column().saturating_sub(50))..(e.column()+50).min(TEST.len())]);
+            panic!("{e}")
+        },
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct RoomEmotes {
     pub sets: HashMap<String, FfzSet>,
+}
+
+impl<'a> IntoIterator for &'a RoomEmotes {
+    type Item = ChannelEmote;
+
+    type IntoIter = impl Iterator<Item = ChannelEmote>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.sets.iter()
+            .flat_map(|s| &s.1.emoticons)
+            .map(|e| e.into())
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -171,6 +172,13 @@ pub struct FfzSet {
 
 #[derive(Debug, Deserialize)]
 pub struct FfzEmote {
-    pub id: u64,
+    #[serde(with = "either::serde_untagged")]
+    pub id: either::Either<u64, String>,
     pub name: String,
+    pub animated: Option<IgnoredAny>
+}
+
+#[derive(Debug, Deserialize)]
+struct FfzEmoteQuery {
+    emote: FfzEmote
 }
