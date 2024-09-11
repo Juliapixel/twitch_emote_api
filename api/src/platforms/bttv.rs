@@ -1,13 +1,14 @@
-use std::{sync::Arc, time::Duration};
+use std::{iter::Map, sync::Arc, time::{Duration, Instant}};
 
 use log::info;
 use reqwest::header::ACCEPT;
 use serde::Deserialize;
+use tokio::sync::OnceCell;
 
-use crate::{cache::Cache, emote::Emote};
+use crate::{cache::Cache, emote::Emote, platforms::channel::ChannelEmote};
 
 use super::{
-    cache::platform_cache_evictor, PlatformError, EMOTE_CACHE_MAX_AGE, USER_CACHE_MAX_AGE,
+    cache::platform_cache_evictor, EmotePlatform, PlatformError, EMOTE_CACHE_MAX_AGE, USER_CACHE_MAX_AGE
 };
 
 #[derive(Debug, Clone)]
@@ -35,11 +36,14 @@ impl BttvClient {
             user_cache,
         }
     }
+}
 
-    pub async fn get_channel_emotes(
-        &self,
-        twitch_id: &str,
-    ) -> Result<Arc<UserEmotes>, PlatformError> {
+impl EmotePlatform for BttvClient {
+    type InternalEmoteType = UserEmotes;
+
+    async fn get_channel_emotes(&self, twitch_id: &str) -> Result<impl std::ops::Deref<Target = Self::InternalEmoteType>, PlatformError>
+    where
+        for<'a> &'a Self::InternalEmoteType: IntoIterator<Item = super::channel::ChannelEmote> {
         if let Some(hit) = self.user_cache.get(twitch_id) {
             return Ok(hit.clone());
         }
@@ -60,7 +64,7 @@ impl BttvClient {
         Ok(emotes)
     }
 
-    pub async fn get_emote_by_id(&self, id: &str) -> Result<Emote, PlatformError> {
+    async fn get_emote_by_id(&self, id: &str) -> Result<Emote, PlatformError> {
         if let Some(hit) = self.emote_cache.get(id) {
             info!("cache hit for BTTV emote {id}");
             return Ok(hit.clone());
@@ -79,6 +83,23 @@ impl BttvClient {
         self.emote_cache.insert(id.into(), emote.clone());
         Ok(emote)
     }
+
+    async fn get_global_emotes(&self) -> Result<impl IntoIterator<Item = super::channel::ChannelEmote>, PlatformError> {
+        static BTTV_GLOBALS: OnceCell<(Vec<ChannelEmote>, Instant)> = OnceCell::const_new();
+
+        let gotten = BTTV_GLOBALS.get_or_try_init(|| { async {
+            let resp = self
+                .client
+                .get("https://api.betterttv.net/3/cached/emotes/global")
+                .send()
+                .await?
+                .json::<Vec<BttvEmote>>().await?;
+            let emotes = resp.iter().map(Into::<ChannelEmote>::into);
+            Result::<(Vec<ChannelEmote>, Instant), PlatformError>::Ok((emotes.collect(), Instant::now()))
+        } }).await?;
+
+        Ok(gotten.0.clone())
+    }
 }
 
 impl Default for BttvClient {
@@ -91,6 +112,17 @@ impl Default for BttvClient {
 #[serde(rename_all = "camelCase")]
 pub struct UserEmotes {
     pub shared_emotes: Vec<BttvEmote>,
+}
+
+
+impl<'a> IntoIterator for &'a UserEmotes {
+    type Item = ChannelEmote;
+
+    type IntoIter = Map<std::slice::Iter<'a, BttvEmote>, fn (&BttvEmote) -> ChannelEmote>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.shared_emotes.iter().map(|e| e.into())
+    }
 }
 
 #[derive(Debug, Deserialize)]

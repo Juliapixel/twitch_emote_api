@@ -1,4 +1,4 @@
-use std::{fmt::Display, sync::Arc, time::Duration};
+use std::{fmt::Display, ops::Deref, sync::Arc, time::Duration};
 
 use axum::response::IntoResponse;
 use channel::{ChannelEmote, ChannelEmotes};
@@ -23,6 +23,18 @@ pub const EMOTE_CACHE_MAX_AGE: Duration = Duration::from_secs(60 * 60 * 8);
 pub const EMOTE_CACHE_EVICTION_INTERVAL: Duration = Duration::from_secs(60 * 15);
 pub const USER_CACHE_MAX_AGE: Duration = Duration::from_secs(60 * 15);
 pub const USER_CACHE_EVICTION_INTERVAL: Duration = Duration::from_secs(60 * 15);
+
+pub trait EmotePlatform {
+    type InternalEmoteType;
+
+    async fn get_channel_emotes(&self, twitch_id: &str) -> Result<impl Deref<Target = Self::InternalEmoteType>, PlatformError>
+    where
+        for<'a> &'a Self::InternalEmoteType: IntoIterator<Item = ChannelEmote>;
+
+    async fn get_emote_by_id(&self, id: &str) -> Result<Emote, PlatformError>;
+
+    async fn get_global_emotes(&self) -> Result<impl IntoIterator<Item = ChannelEmote>, PlatformError>;
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum PlatformError {
@@ -173,12 +185,12 @@ mod tests {
     //! TuCuando
     #![allow(clippy::unwrap_used, reason = "bruh this is a tests module")]
 
-    use crate::platforms::{bttv::BttvClient, ffz::FfzClient, seventv::SevenTvClient};
+    use crate::platforms::{bttv::BttvClient, ffz::FfzClient, seventv::SevenTvClient, EmotePlatform};
 
     use super::TwitchClient;
 
-    // id for Julialuxel (me)
-    const TWITCH_ID: &str = "173685614";
+    // id for PSP1G (he has tons of emotes in all platforms)
+    const TWITCH_ID: &str = "104391402";
 
     #[tokio::test]
     async fn seventv_test() {
@@ -192,6 +204,8 @@ mod tests {
 
         client.get_emote_by_id(STATIC_EMOTE_ID).await.unwrap();
         client.get_emote_by_id(ANIMATED_EMOTE_ID).await.unwrap();
+
+        client.get_global_emotes().await.unwrap();
     }
 
     #[tokio::test]
@@ -205,6 +219,8 @@ mod tests {
 
         client.get_emote_by_id(STATIC_EMOTE_ID).await.unwrap();
         client.get_emote_by_id(ANIMATED_EMOTE_ID).await.unwrap();
+
+        client.get_global_emotes().await.unwrap();
     }
 
     #[tokio::test]
@@ -216,6 +232,8 @@ mod tests {
         client.get_channel_emotes(TWITCH_ID).await.unwrap();
 
         client.get_emote_by_id(STATIC_EMOTE_ID).await.unwrap();
+
+        client.get_global_emotes().await.unwrap();
     }
 
     #[tokio::test]

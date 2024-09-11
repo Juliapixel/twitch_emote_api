@@ -3,6 +3,8 @@ use std::sync::Arc;
 use dashmap::DashMap;
 use serde::Serialize;
 
+use crate::platforms::EmotePlatform;
+
 use super::{
     bttv::BttvEmote, ffz::FfzEmote, seventv::SevenTvEmote, EmoteManager, Platform, PlatformError,
 };
@@ -124,7 +126,7 @@ impl From<FfzEmote> for ChannelEmote {
     fn from(value: FfzEmote) -> Self {
         Self {
             platform: Platform::FrancerFaceZ,
-            id: value.id,
+            id: value.id.to_string(),
             name: value.name,
         }
     }
@@ -134,7 +136,7 @@ impl From<&FfzEmote> for ChannelEmote {
     fn from(value: &FfzEmote) -> Self {
         Self {
             platform: Platform::FrancerFaceZ,
-            id: value.id.clone(),
+            id: value.id.clone().to_string(),
             name: value.name.clone(),
         }
     }

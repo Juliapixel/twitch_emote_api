@@ -1,13 +1,14 @@
-use std::{sync::Arc, time::Duration};
+use std::{iter::Map, ops::Deref, sync::Arc, time::{Duration, Instant}};
 
 use log::info;
 use reqwest::header::ACCEPT;
 use serde::Deserialize;
+use tokio::sync::OnceCell;
 
 use crate::{cache::Cache, emote::Emote};
 
 use super::{
-    cache::platform_cache_evictor, PlatformError, EMOTE_CACHE_MAX_AGE, USER_CACHE_MAX_AGE,
+    cache::platform_cache_evictor, channel::ChannelEmote, EmotePlatform, PlatformError, EMOTE_CACHE_MAX_AGE, USER_CACHE_MAX_AGE
 };
 
 #[derive(Debug, Clone)]
@@ -35,11 +36,52 @@ impl SevenTvClient {
             user_cache,
         }
     }
+}
 
-    pub async fn get_channel_emotes(
-        &self,
-        twitch_id: &str,
-    ) -> Result<Arc<UserEmotes>, PlatformError> {
+impl EmotePlatform for SevenTvClient {
+    type InternalEmoteType = UserEmotes;
+
+    async fn get_emote_by_id(&self, id: &str) -> Result<Emote, PlatformError> {
+        if let Some(hit) = self.emote_cache.get(id) {
+            info!("cache hit for 7TV emote {id}");
+
+            return Ok(hit.clone());
+        }
+
+        info!("requesting 7TV emote {id}");
+        let resp = self
+            .client
+            .get(format!("https://cdn.7tv.app/emote/{id}/4x.webp"))
+            .header(ACCEPT, "image/png, imErr(PlatformError::ChannelNotFound)age/webp, image/gif")
+            .send()
+            .await
+            .map_err(|e| e.without_url())?;
+
+        let emote = Emote::try_from_response(resp, id).await?;
+        self.emote_cache.insert(id.into(), emote.clone());
+        Ok(emote)
+    }
+
+    async fn get_global_emotes(&self) -> Result<impl IntoIterator<Item = ChannelEmote>, PlatformError> {
+        static SEVENTV_GLOBALS: OnceCell<(Vec<ChannelEmote>, Instant)> = OnceCell::const_new();
+
+        let gotten = SEVENTV_GLOBALS.get_or_try_init(|| { async {
+            let resp = self
+                .client
+                .get("https://7tv.io/v3/emote-sets/global")
+                .send()
+                .await?
+                .json::<EmoteSet>().await?;
+            let emotes = resp.emotes.iter().map(Into::<ChannelEmote>::into);
+            Result::<(Vec<ChannelEmote>, Instant), PlatformError>::Ok((emotes.collect(), Instant::now()))
+        } }).await?;
+
+        Ok(gotten.0.clone())
+    }
+
+    async fn get_channel_emotes(&self, twitch_id: &str) -> Result<impl Deref<Target = Self::InternalEmoteType>, PlatformError>
+    where
+        for<'a> &'a Self::InternalEmoteType: IntoIterator<Item = ChannelEmote> {
         if let Some(hit) = self.user_cache.get(twitch_id) {
             info!("7TV channel emotes cache hit for {twitch_id}");
             return Ok(hit.clone());
@@ -60,27 +102,6 @@ impl SevenTvClient {
         self.user_cache.insert(twitch_id.into(), emotes.clone());
         Ok(emotes)
     }
-
-    pub async fn get_emote_by_id(&self, id: &str) -> Result<Emote, PlatformError> {
-        if let Some(hit) = self.emote_cache.get(id) {
-            info!("cache hit for 7TV emote {id}");
-
-            return Ok(hit.clone());
-        }
-
-        info!("requesting 7TV emote {id}");
-        let resp = self
-            .client
-            .get(format!("https://cdn.7tv.app/emote/{id}/4x.webp"))
-            .header(ACCEPT, "image/png, image/webp, image/gif")
-            .send()
-            .await
-            .map_err(|e| e.without_url())?;
-
-        let emote = Emote::try_from_response(resp, id).await?;
-        self.emote_cache.insert(id.into(), emote.clone());
-        Ok(emote)
-    }
 }
 
 impl Default for SevenTvClient {
@@ -92,6 +113,16 @@ impl Default for SevenTvClient {
 #[derive(Debug, Clone, Deserialize)]
 pub struct UserEmotes {
     pub emote_set: EmoteSet,
+}
+
+impl<'a> IntoIterator for &'a UserEmotes {
+    type Item = ChannelEmote;
+
+    type IntoIter = Map<std::slice::Iter<'a, SevenTvEmote>, fn (&SevenTvEmote) -> ChannelEmote>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.emote_set.emotes.iter().map(|e| e.into())
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
