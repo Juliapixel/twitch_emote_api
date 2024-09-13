@@ -36,7 +36,7 @@ export class EmotesClient {
         tmiClient.connect();
 
         this.config.channels.forEach((c) => this.updateChannelEmotes(c));
-        this.refreshInterval = setInterval(
+        this.refreshInterval = window.setInterval(
             () => {
                 this.config.channels.forEach((c) => this.updateChannelEmotes(c));
             },
