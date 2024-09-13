@@ -5,7 +5,7 @@ import {
     Texture,
     TextureLoader
 } from "three";
-import { ChannelEmote } from ".";
+import { ChannelEmote } from "./client.js";
 
 interface AnimationFrame {
     texture: Texture;
@@ -26,14 +26,15 @@ let cache: Map<
 > = new Map();
 
 export class EmoteMaterial extends MeshBasicMaterial {
-    private frames: AnimationFrame[];
-    private animationLength: number;
-    private currentFrame: number;
-    public aspectRatio: number;
+    private frames: AnimationFrame[] = [];
+    private animationLength: number = 0;
+    private currentFrame: number = 0;
+    public aspectRatio: number = 1;
 
     constructor(
         channel: string,
         emote: ChannelEmote,
+        apiUrl: string,
         onLoad?: (mat: EmoteMaterial) => void | Promise<void>
     ) {
         super({ transparent: true, side: 2 });
@@ -48,9 +49,7 @@ export class EmoteMaterial extends MeshBasicMaterial {
             return;
         }
 
-        fetch(
-            `https://overlay-api.juliapixel.com/emote/${channel}/${emote.name}`
-        ).then(async (resp) => {
+        fetch(`${apiUrl}/emote/${channel}/${emote.name}`).then(async (resp) => {
             let emoteInfo: EmoteInfo = await resp.json();
             this.animationLength = emoteInfo.frame_delays.reduce(
                 (sum, delay) => (sum += delay)
@@ -63,9 +62,7 @@ export class EmoteMaterial extends MeshBasicMaterial {
                 let textureLoader = new TextureLoader(new LoadingManager());
 
                 textureLoader
-                    .loadAsync(
-                        `https://overlay-api.juliapixel.com/emote/${channel}/${emote.name}/${i}.webp`
-                    )
+                    .loadAsync(`${apiUrl}/emote/${channel}/${emote.name}/${i}.webp`)
                     .then((tex) => {
                         if (i === 0) {
                             this.map = tex;

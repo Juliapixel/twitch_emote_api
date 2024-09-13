@@ -8,18 +8,15 @@ importers:
 
   .:
     dependencies:
+      js-lib:
+        specifier: file:../js-lib
+        version: twitch-emote-client@file:../js-lib
       three:
         specifier: ^0.168.0
         version: 0.168.0
       tmi.js:
         specifier: ^1.8.5
         version: 1.8.5
-      twitch-chat-emotes:
-        specifier: ^0.4.3
-        version: 0.4.3
-      twitch-chat-emotes-threejs:
-        specifier: ^0.4.3
-        version: 0.4.3
     devDependencies:
       '@types/three':
         specifier: ^0.168.0
@@ -336,11 +333,8 @@ packages:
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
 
-  twitch-chat-emotes-threejs@0.4.3:
-    resolution: {integrity: sha512-yGwc04vyFDBPb6MfFABOUtLPboaS2uxzGzcVlULnguNF3YD+PDQTijEd2u1yJVKeH3Zpu4MfCNosddmCFrgm/A==}
-
-  twitch-chat-emotes@0.4.3:
-    resolution: {integrity: sha512-5KnwEWVtOiZ/YkrwEi37LGdsj+TYednRcynSXw6eR4JV/H7zRxTpVvzGxqDFSMQtjTSfhykaGve0yai+qNST4g==}
+  twitch-emote-client@file:../js-lib:
+    resolution: {directory: ../js-lib, type: directory}
 
   vite@5.4.3:
     resolution: {integrity: sha512-IH+nl64eq9lJjFqU+/yrRnrHPVTlgy42/+IzbOdaFDVlyLgI/wDlf+FCobXLX1cT0X5+7LMyH1mIy2xJdLfo8Q==}
@@ -617,17 +611,10 @@ snapshots:
 
   tr46@0.0.3: {}
 
-  twitch-chat-emotes-threejs@0.4.3:
+  twitch-emote-client@file:../js-lib:
     dependencies:
-      twitch-chat-emotes: 0.4.3
-    transitivePeerDependencies:
-      - bufferutil
-      - encoding
-      - utf-8-validate
-
-  twitch-chat-emotes@0.4.3:
-    dependencies:
-      tmi.js: 1.8.5
+      three: 0.168.0
+      tmi-js: tmi.js@1.8.5
     transitivePeerDependencies:
       - bufferutil
       - encoding

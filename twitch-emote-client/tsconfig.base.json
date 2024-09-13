@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "es2018",
+    "module": "ES2015",
+    "moduleResolution": "node",
+
+    "allowJs": true,
+
+    "declaration": true,
+    "declarationDir": "./dist/types",
+    "declarationMap": true,
+    // "emitDeclarationOnly": true,
+    "sourceMap": true,
+    // "inlineSourceMap": true,
+    // "noEmit": true,
+    // "outFile": "./",
+    // "outDir": "./dist",
+    // "removeComments": false,
+    // "importHelpers": true,
+    // "downlevelIteration": true,
+    // "sourceRoot": "./src",
+
+    // "isolatedModules": true,
+    // "verbatimModuleSyntax": true,
+    // "isolatedDeclarations": true,
+    // "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+
+    // "preserveSymlinks": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noImplicitThis": true,
+    // "useUnknownInCatchVariables": true,
+    // "alwaysStrict": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    // "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    // "allowUnusedLabels": true,
+    // "allowUnreachableCode": true,
+
+    "skipDefaultLibCheck": true,
+    "skipLibCheck": true
+  },
+  "exclude": ["./dist", "./node_modules"]
+}

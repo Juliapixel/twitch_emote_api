@@ -3,25 +3,16 @@ import "./style.css";
 
 import {
     Group,
-    LoadingManager,
     Mesh,
     PerspectiveCamera,
     PlaneGeometry,
     Scene,
-    Sprite,
     SpriteMaterial,
-    SRGBColorSpace,
-    TextureLoader,
     Vector3,
     WebGLRenderer
 } from "three";
-import { Client } from "tmi.js";
-import { ChannelEmote, EmotesClient } from "./lib";
-import { EmoteMaterial } from "./lib/material";
+import { ChannelEmote, EmotesClient, EmoteMaterial, EmoteObject } from "js-lib";
 
-/**
- * URL Parameters and configuration
- */
 // a default array of twitch channels to join
 let channels = ["julialuxel"];
 
@@ -146,33 +137,29 @@ const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
             .multiply(new Vector3(3, 3, 1))
     };
 
-    let i = 0;
+    let slicedEmotes = emotes.slice(0, 8)
+    let processedEmotes = 0;
+    for (const emote of slicedEmotes) {
+        new EmoteObject(channel, client.config.emotesApi, emote, (obj) => {
+            obj.position.x = Math.random() * 4 - 2;
+            obj.position.y = Math.random() * 4 - 2;
+            obj.position.z = Math.random() * 4 - 2;
 
-    let loader = new TextureLoader(new LoadingManager());
-    for (const emote of emotes.slice(0, 8)) {
-        let tex = loader.load(
-            `https://overlay-api.juliapixel.com/emote/${channel}/${emote.name}/0.webp`,
-            (text) => {
-                tex.colorSpace = SRGBColorSpace;
-                let mat = new EmoteMaterial(channel, emote, (mat) => {
-                    let sprite = new Mesh(new PlaneGeometry(), mat);
-                    sprite.scale.x = mat.aspectRatio;
-                    // ensure emotes from the same message don't overlap each other
-                    sprite.position.x = Math.random() * 4 - 2;
-                    sprite.position.y = Math.random() * 4 - 2;
-                    sprite.position.z = Math.random() * 4 - 2;
-
-                    group.add(sprite);
-                });
+            group.add(obj)
+            processedEmotes++;
+            // wait until all emotes have been processed properly to spawn the group
+            if (processedEmotes === slicedEmotes.length) {
+                group.data.timestamp = Date.now()
+                scene.add(group);
+                sceneEmoteArray.push(group);
             }
-        );
-        i++;
+        });
     }
 
     group.update = () => {
         for (let child of group.children) {
-            if (child instanceof Mesh && child.material instanceof EmoteMaterial) {
-                child.material.animateTexture(performance.now() / 1000);
+            if (child instanceof EmoteObject) {
+                child.animateTexture((performance.now() + group.data.timestamp) / 1000);
             }
         }
         let progress = (Date.now() - group.data.timestamp) / group.data.lifespan;
@@ -187,22 +174,8 @@ const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
             group.scale.setScalar(1);
         }
     };
-
-    scene.add(group);
-    sceneEmoteArray.push(group);
 };
 
-// spawn some fake emotes for testing purposes
-const placeholder_mats = [
-    new SpriteMaterial({ color: 0xff4444 }),
-    new SpriteMaterial({ color: 0x44ff44 }),
-    new SpriteMaterial({ color: 0x4444ff })
-];
-// setInterval(() => {
-//     spawnEmote([
-//         {
-//             material:
-//                 placeholder_mats[Math.floor(Math.random() * placeholder_mats.length)]
-//         }
-//     ]);
-// }, 1000);
+setInterval(() => {
+    spawnEmote([{id: "64cd931ed3cf2f1c8cca5264", name: "juh", platform: "7tv"}], "julialuxel");
+}, 1000);

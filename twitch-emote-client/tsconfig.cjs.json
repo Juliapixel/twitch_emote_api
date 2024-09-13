@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ES2015",
+    "outDir": "./dist/cjs",
+    "target": "ES2018",
+    "moduleResolution": "Classic"
+  }
+}

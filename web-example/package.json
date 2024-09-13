@@ -17,6 +17,7 @@
     "vite": "^5.4.3"
   },
   "dependencies": {
+    "js-lib": "file:../js-lib",
     "three": "^0.168.0",
     "tmi.js": "^1.8.5"
   }
