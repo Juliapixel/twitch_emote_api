@@ -72,10 +72,9 @@ impl EmotePlatform for SevenTvClient {
         Ok(emote)
     }
 
-    async fn get_global_emotes(
-        &self,
-    ) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
-        static SEVENTV_GLOBALS: OnceCell<(Arc<DashMap<String, ChannelEmote>>, Instant)> = OnceCell::const_new();
+    async fn get_global_emotes(&self) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
+        static SEVENTV_GLOBALS: OnceCell<(Arc<DashMap<String, ChannelEmote>>, Instant)> =
+            OnceCell::const_new();
 
         let gotten = SEVENTV_GLOBALS
             .get_or_try_init(|| async {

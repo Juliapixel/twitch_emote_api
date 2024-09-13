@@ -94,10 +94,9 @@ impl EmotePlatform for BttvClient {
         Ok(emote)
     }
 
-    async fn get_global_emotes(
-        &self,
-    ) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
-        static BTTV_GLOBALS: OnceCell<(Arc<DashMap<String, ChannelEmote>>, Instant)> = OnceCell::const_new();
+    async fn get_global_emotes(&self) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
+        static BTTV_GLOBALS: OnceCell<(Arc<DashMap<String, ChannelEmote>>, Instant)> =
+            OnceCell::const_new();
 
         let gotten = BTTV_GLOBALS
             .get_or_try_init(|| async {
@@ -108,7 +107,10 @@ impl EmotePlatform for BttvClient {
                     .await?
                     .json::<Vec<BttvEmote>>()
                     .await?;
-                let emotes = resp.into_iter().map(|e| (e.code.clone(), e.into())).collect();
+                let emotes = resp
+                    .into_iter()
+                    .map(|e| (e.code.clone(), e.into()))
+                    .collect();
                 Result::<(Arc<DashMap<String, ChannelEmote>>, Instant), PlatformError>::Ok((
                     Arc::new(emotes),
                     Instant::now(),

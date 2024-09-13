@@ -112,10 +112,9 @@ impl EmotePlatform for FfzClient {
         Ok(Emote::try_from_response(resp, id).await?)
     }
 
-    async fn get_global_emotes(
-        &self,
-    ) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
-        static FFZ_GLOBALS: OnceCell<(Arc<DashMap<String, ChannelEmote>>, Instant)> = OnceCell::const_new();
+    async fn get_global_emotes(&self) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
+        static FFZ_GLOBALS: OnceCell<(Arc<DashMap<String, ChannelEmote>>, Instant)> =
+            OnceCell::const_new();
 
         let gotten = FFZ_GLOBALS
             .get_or_try_init(|| {

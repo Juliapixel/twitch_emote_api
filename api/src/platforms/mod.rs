@@ -36,9 +36,7 @@ pub trait EmotePlatform {
 
     async fn get_emote_by_id(&self, id: &str) -> Result<Emote, PlatformError>;
 
-    async fn get_global_emotes(
-        &self,
-    ) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError>;
+    async fn get_global_emotes(&self) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError>;
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -144,7 +142,10 @@ impl EmoteManager {
         self.channel_emotes.get_or_track(channel, self).await
     }
 
-    pub async fn get_global_emotes(&self, platform: Platform) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
+    pub async fn get_global_emotes(
+        &self,
+        platform: Platform,
+    ) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
         match platform {
             Platform::SevenTv => self.seventv.get_global_emotes().await,
             Platform::BetterTtv => self.bttv.get_global_emotes().await,

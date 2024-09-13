@@ -30,23 +30,28 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
             config::FileFormat::Yaml,
         ))
         .build()?;
-    let db_path = config.get::<std::path::PathBuf>("db_path")?;
+    // let db_path = config.get::<std::path::PathBuf>("db_path")?;
 
     let app = axum::Router::new()
         .route("/emote/:channel/:name/:frame", get(channel_emote_frame))
         .route("/emote/:channel/:name", get(channel_emote_info))
         .route("/emote/globals/:platform/", get(platform_global_emotes))
-        .route("/emote/globals/:platform/:name", get(platform_global_emote_info))
-        .route("/emote/globals/:platform/:name/:frame", get(platform_global_emote_frame))
         .route(
-            "/user/:username",
-            get(emotes_by_username).route_layer(
-                tower_http::compression::CompressionLayer::new()
-                    .gzip(true)
-                    .br(true),
-            ),
+            "/emote/globals/:platform/:name",
+            get(platform_global_emote_info),
         )
+        .route(
+            "/emote/globals/:platform/:name/:frame",
+            get(platform_global_emote_frame),
+        )
+        .route("/user/:username", get(emotes_by_username))
         .layer(tower_http::cors::CorsLayer::permissive())
+        .layer(
+            tower_http::compression::CompressionLayer::new()
+                .br(true)
+                .gzip(true)
+                .no_zstd(),
+        )
         .with_state(
             EmoteManager::new(ARGS.client_id.as_str(), ARGS.client_secret.as_str())
                 .await
@@ -119,14 +124,17 @@ async fn channel_emote_info(
     Ok(resp)
 }
 
-async fn platform_global_emotes(Path(platform): Path<Platform>, State(manager): State<EmoteManager>) -> Result<Response<Body>, PlatformError> {
-    Ok(Json::from(
-        manager.get_global_emotes(platform).await?
-        ).into_response()
-    )
+async fn platform_global_emotes(
+    Path(platform): Path<Platform>,
+    State(manager): State<EmoteManager>,
+) -> Result<Response<Body>, PlatformError> {
+    Ok(Json::from(manager.get_global_emotes(platform).await?).into_response())
 }
 
-async fn platform_global_emote_info(Path((platform, emote)): Path<(Platform, String)>, State(manager): State<EmoteManager>) -> Result<Response<Body>, PlatformError> {
+async fn platform_global_emote_info(
+    Path((platform, emote)): Path<(Platform, String)>,
+    State(manager): State<EmoteManager>,
+) -> Result<Response<Body>, PlatformError> {
     match manager.get_global_emotes(platform).await?.get(&emote) {
         Some(global) => Ok(Json::from(global).into_response()),
         None => Err(PlatformError::EmoteNotFound),
@@ -135,7 +143,7 @@ async fn platform_global_emote_info(Path((platform, emote)): Path<(Platform, Str
 
 async fn platform_global_emote_frame(
     Path((platform, emote, frame)): Path<(Platform, String, String)>,
-    State(manager): State<EmoteManager>
+    State(manager): State<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     let frame_requested = frame.to_lowercase();
     if !frame.ends_with(".webp") {
@@ -145,20 +153,17 @@ async fn platform_global_emote_frame(
     let number = frame_requested[0..frame_requested.len() - 5].parse::<u32>();
 
     match number {
-        Ok(frame) => {
-            match manager.get_global_emotes(platform).await?.get(&emote) {
-                Some(info) => {
-                    let emote = manager.get_emote(info.platform, &info.id).await?;
+        Ok(frame) => match manager.get_global_emotes(platform).await?.get(&emote) {
+            Some(info) => {
+                let emote = manager.get_emote(info.platform, &info.id).await?;
 
-                    match emote.frames.get(frame as usize) {
-                        Some(frame) => Ok(frame.clone().into_response()),
-                        None => Ok((StatusCode::NOT_FOUND, ()).into_response()),
-                    }
-                },
-                None => Err(PlatformError::EmoteNotFound),
+                match emote.frames.get(frame as usize) {
+                    Some(frame) => Ok(frame.clone().into_response()),
+                    None => Ok((StatusCode::NOT_FOUND, ()).into_response()),
+                }
             }
+            None => Err(PlatformError::EmoteNotFound),
         },
         Err(_) => Err(PlatformError::EmoteNotFound),
     }
-
 }
