@@ -27,13 +27,18 @@ pub const USER_CACHE_EVICTION_INTERVAL: Duration = Duration::from_secs(60 * 15);
 pub trait EmotePlatform {
     type InternalEmoteType;
 
-    async fn get_channel_emotes(&self, twitch_id: &str) -> Result<impl Deref<Target = Self::InternalEmoteType>, PlatformError>
+    async fn get_channel_emotes(
+        &self,
+        twitch_id: &str,
+    ) -> Result<impl Deref<Target = Self::InternalEmoteType>, PlatformError>
     where
         for<'a> &'a Self::InternalEmoteType: IntoIterator<Item = ChannelEmote>;
 
     async fn get_emote_by_id(&self, id: &str) -> Result<Emote, PlatformError>;
 
-    async fn get_global_emotes(&self) -> Result<impl IntoIterator<Item = ChannelEmote>, PlatformError>;
+    async fn get_global_emotes(
+        &self,
+    ) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError>;
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -138,6 +143,15 @@ impl EmoteManager {
     ) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
         self.channel_emotes.get_or_track(channel, self).await
     }
+
+    pub async fn get_global_emotes(&self, platform: Platform) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
+        match platform {
+            Platform::SevenTv => self.seventv.get_global_emotes().await,
+            Platform::BetterTtv => self.bttv.get_global_emotes().await,
+            Platform::FrancerFaceZ => self.ffz.get_global_emotes().await,
+            Platform::Twitch => todo!(),
+        }
+    }
 }
 
 mod cache {
@@ -185,7 +199,9 @@ mod tests {
     //! TuCuando
     #![allow(clippy::unwrap_used, reason = "bruh this is a tests module")]
 
-    use crate::platforms::{bttv::BttvClient, ffz::FfzClient, seventv::SevenTvClient, EmotePlatform};
+    use crate::platforms::{
+        bttv::BttvClient, ffz::FfzClient, seventv::SevenTvClient, EmotePlatform,
+    };
 
     use super::TwitchClient;
 

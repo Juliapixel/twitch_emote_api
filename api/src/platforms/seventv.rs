@@ -1,5 +1,11 @@
-use std::{iter::Map, ops::Deref, sync::Arc, time::{Duration, Instant}};
+use std::{
+    iter::Map,
+    ops::Deref,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
+use dashmap::DashMap;
 use log::info;
 use reqwest::header::ACCEPT;
 use serde::Deserialize;
@@ -8,7 +14,8 @@ use tokio::sync::OnceCell;
 use crate::{cache::Cache, emote::Emote};
 
 use super::{
-    cache::platform_cache_evictor, channel::ChannelEmote, EmotePlatform, PlatformError, EMOTE_CACHE_MAX_AGE, USER_CACHE_MAX_AGE
+    cache::platform_cache_evictor, channel::ChannelEmote, EmotePlatform, PlatformError,
+    EMOTE_CACHE_MAX_AGE, USER_CACHE_MAX_AGE,
 };
 
 #[derive(Debug, Clone)]
@@ -52,7 +59,10 @@ impl EmotePlatform for SevenTvClient {
         let resp = self
             .client
             .get(format!("https://cdn.7tv.app/emote/{id}/4x.webp"))
-            .header(ACCEPT, "image/png, imErr(PlatformError::ChannelNotFound)age/webp, image/gif")
+            .header(
+                ACCEPT,
+                "image/png, imErr(PlatformError::ChannelNotFound)age/webp, image/gif",
+            )
             .send()
             .await
             .map_err(|e| e.without_url())?;
@@ -62,26 +72,38 @@ impl EmotePlatform for SevenTvClient {
         Ok(emote)
     }
 
-    async fn get_global_emotes(&self) -> Result<impl IntoIterator<Item = ChannelEmote>, PlatformError> {
-        static SEVENTV_GLOBALS: OnceCell<(Vec<ChannelEmote>, Instant)> = OnceCell::const_new();
+    async fn get_global_emotes(
+        &self,
+    ) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
+        static SEVENTV_GLOBALS: OnceCell<(Arc<DashMap<String, ChannelEmote>>, Instant)> = OnceCell::const_new();
 
-        let gotten = SEVENTV_GLOBALS.get_or_try_init(|| { async {
-            let resp = self
-                .client
-                .get("https://7tv.io/v3/emote-sets/global")
-                .send()
-                .await?
-                .json::<EmoteSet>().await?;
-            let emotes = resp.emotes.iter().map(Into::<ChannelEmote>::into);
-            Result::<(Vec<ChannelEmote>, Instant), PlatformError>::Ok((emotes.collect(), Instant::now()))
-        } }).await?;
+        let gotten = SEVENTV_GLOBALS
+            .get_or_try_init(|| async {
+                let resp = self
+                    .client
+                    .get("https://7tv.io/v3/emote-sets/global")
+                    .send()
+                    .await?
+                    .json::<EmoteSet>()
+                    .await?;
+                let emotes = resp.emotes.into_iter().map(|e| (e.name.clone(), e.into()));
+                Result::<(Arc<DashMap<String, ChannelEmote>>, Instant), PlatformError>::Ok((
+                    Arc::new(emotes.collect()),
+                    Instant::now(),
+                ))
+            })
+            .await?;
 
         Ok(gotten.0.clone())
     }
 
-    async fn get_channel_emotes(&self, twitch_id: &str) -> Result<impl Deref<Target = Self::InternalEmoteType>, PlatformError>
+    async fn get_channel_emotes(
+        &self,
+        twitch_id: &str,
+    ) -> Result<impl Deref<Target = Self::InternalEmoteType>, PlatformError>
     where
-        for<'a> &'a Self::InternalEmoteType: IntoIterator<Item = ChannelEmote> {
+        for<'a> &'a Self::InternalEmoteType: IntoIterator<Item = ChannelEmote>,
+    {
         if let Some(hit) = self.user_cache.get(twitch_id) {
             info!("7TV channel emotes cache hit for {twitch_id}");
             return Ok(hit.clone());
@@ -118,7 +140,7 @@ pub struct UserEmotes {
 impl<'a> IntoIterator for &'a UserEmotes {
     type Item = ChannelEmote;
 
-    type IntoIter = Map<std::slice::Iter<'a, SevenTvEmote>, fn (&SevenTvEmote) -> ChannelEmote>;
+    type IntoIter = Map<std::slice::Iter<'a, SevenTvEmote>, fn(&SevenTvEmote) -> ChannelEmote>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.emote_set.emotes.iter().map(|e| e.into())

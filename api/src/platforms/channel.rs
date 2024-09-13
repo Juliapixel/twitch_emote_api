@@ -18,6 +18,7 @@ pub struct ChannelEmote {
 }
 
 #[derive(Debug, Clone, Default)]
+#[deprecated]
 pub struct ChannelEmotes {
     channels: DashMap<String, Arc<DashMap<String, ChannelEmote>>>,
 }
@@ -50,27 +51,15 @@ impl ChannelEmotes {
                 );
 
                 match seventv_resp {
-                    Ok(resp) => {
-                        emotes.extend(
-                            resp.into_iter().map(|e| (e.name.clone(), e)),
-                        )
-                    },
+                    Ok(resp) => emotes.extend(resp.into_iter().map(|e| (e.name.clone(), e))),
                     Err(e) => error!("{e}"),
                 }
                 match bttv_resp {
-                    Ok(resp) => {
-                        emotes.extend(
-                            resp.into_iter().map(|e| (e.name.clone(), e)),
-                        )
-                    },
+                    Ok(resp) => emotes.extend(resp.into_iter().map(|e| (e.name.clone(), e))),
                     Err(e) => error!("{e}"),
                 }
                 match ffz_resp {
-                    Ok(resp) => {
-                        emotes.extend(
-                            resp.into_iter().map(|e| (e.name.clone(), e)),
-                        )
-                    },
+                    Ok(resp) => emotes.extend(resp.into_iter().map(|e| (e.name.clone(), e))),
                     Err(e) => error!("{e}"),
                 }
 

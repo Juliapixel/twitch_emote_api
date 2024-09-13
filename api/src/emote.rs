@@ -1,4 +1,7 @@
-use std::{io::Cursor, sync::{Arc, LazyLock}};
+use std::{
+    io::Cursor,
+    sync::{Arc, LazyLock},
+};
 
 use axum::{
     body::Body,
@@ -109,7 +112,9 @@ pub struct Frame {
 impl IntoResponse for Frame {
     fn into_response(self) -> axum::response::Response {
         static CACHE_HEADER: LazyLock<HeaderValue> = LazyLock::new(|| {
-            format!("max-age={}, public", {60 * 60 * 15}).try_into().expect("oh no")
+            format!("max-age={}, public", { 60 * 60 * 15 })
+                .try_into()
+                .expect("oh no")
         });
 
         let mut resp = Response::new(Body::from(self.data));
@@ -120,10 +125,8 @@ impl IntoResponse for Frame {
                 .try_into()
                 .expect("this should never fail erm"),
         );
-        resp.headers_mut().insert(
-            CACHE_CONTROL,
-            CACHE_HEADER.clone()
-        );
+        resp.headers_mut()
+            .insert(CACHE_CONTROL, CACHE_HEADER.clone());
         resp
     }
 }

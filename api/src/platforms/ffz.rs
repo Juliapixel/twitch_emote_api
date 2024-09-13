@@ -1,5 +1,9 @@
-use std::{sync::Arc, time::{Duration, Instant}};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
+use dashmap::DashMap;
 use hashbrown::HashMap;
 use http::StatusCode;
 use reqwest::header::ACCEPT;
@@ -9,7 +13,8 @@ use tokio::sync::OnceCell;
 use crate::{cache::Cache, emote::Emote, platforms::channel::ChannelEmote};
 
 use super::{
-    cache::platform_cache_evictor, EmotePlatform, PlatformError, EMOTE_CACHE_MAX_AGE, USER_CACHE_MAX_AGE
+    cache::platform_cache_evictor, EmotePlatform, PlatformError, EMOTE_CACHE_MAX_AGE,
+    USER_CACHE_MAX_AGE,
 };
 
 #[derive(Debug, Clone)]
@@ -42,21 +47,26 @@ impl FfzClient {
 impl EmotePlatform for FfzClient {
     type InternalEmoteType = RoomEmotes;
 
-    async fn get_channel_emotes(&self, twitch_id: &str) -> Result<impl std::ops::Deref<Target = Self::InternalEmoteType>, PlatformError>
+    async fn get_channel_emotes(
+        &self,
+        twitch_id: &str,
+    ) -> Result<impl std::ops::Deref<Target = Self::InternalEmoteType>, PlatformError>
     where
-        for<'a> &'a Self::InternalEmoteType: IntoIterator<Item = super::channel::ChannelEmote> {
+        for<'a> &'a Self::InternalEmoteType: IntoIterator<Item = super::channel::ChannelEmote>,
+    {
         if let Some(hit) = self.user_cache.get(twitch_id) {
             return Ok(hit.clone());
         }
 
-        let emotes = Arc::new(self.client
-            .get(format!(
-                "https://api.frankerfacez.com/v1/room/id/{twitch_id}"
-            ))
-            .send()
-            .await?
-            .json::<RoomEmotes>()
-            .await?
+        let emotes = Arc::new(
+            self.client
+                .get(format!(
+                    "https://api.frankerfacez.com/v1/room/id/{twitch_id}"
+                ))
+                .send()
+                .await?
+                .json::<RoomEmotes>()
+                .await?,
         );
 
         self.user_cache.insert(twitch_id.into(), emotes.clone());
@@ -76,10 +86,16 @@ impl EmotePlatform for FfzClient {
             .map_err(|e| e.without_url())?;
 
         if emote_query.status() == StatusCode::NOT_FOUND {
-            return Err(PlatformError::EmoteNotFound)
+            return Err(PlatformError::EmoteNotFound);
         }
 
-        let url = if emote_query.json::<FfzEmoteQuery>().await?.emote.animated.is_some() {
+        let url = if emote_query
+            .json::<FfzEmoteQuery>()
+            .await?
+            .emote
+            .animated
+            .is_some()
+        {
             format!("https://cdn.frankerfacez.com/emote/{id}/animated/4")
         } else {
             format!("https://cdn.frankerfacez.com/emote/{id}/4")
@@ -96,27 +112,37 @@ impl EmotePlatform for FfzClient {
         Ok(Emote::try_from_response(resp, id).await?)
     }
 
-    async fn get_global_emotes(&self) -> Result<impl IntoIterator<Item = super::channel::ChannelEmote>, PlatformError> {
-        static FFZ_GLOBALS: OnceCell<(Vec<ChannelEmote>, Instant)> = OnceCell::const_new();
+    async fn get_global_emotes(
+        &self,
+    ) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
+        static FFZ_GLOBALS: OnceCell<(Arc<DashMap<String, ChannelEmote>>, Instant)> = OnceCell::const_new();
 
-        let gotten = FFZ_GLOBALS.get_or_try_init(|| { async {
-            let resp = self
-                .client
-                .get("https://api.frankerfacez.com/v1/set/global/ids")
-                .send()
-                .await?
-                .json::<DefaultSets>().await?;
+        let gotten = FFZ_GLOBALS
+            .get_or_try_init(|| {
+                async {
+                    let resp = self
+                        .client
+                        .get("https://api.frankerfacez.com/v1/set/global/ids")
+                        .send()
+                        .await?
+                        .json::<DefaultSets>()
+                        .await?;
 
-            // HOLY MOLY
-            let emotes: Vec<ChannelEmote> = resp
-                .sets
-                .into_values()
-                .filter(|set| resp.default_sets.contains(&set.id))
-                .flat_map(|s| s.emoticons)
-                .map(|e| e.into())
-                .collect();
-            Result::<(Vec<ChannelEmote>, Instant), PlatformError>::Ok((emotes, Instant::now()))
-        } }).await?;
+                    // HOLY MOLY
+                    let emotes: DashMap<String, ChannelEmote> = resp
+                        .sets
+                        .into_values()
+                        .filter(|set| resp.default_sets.contains(&set.id))
+                        .flat_map(|s| s.emoticons)
+                        .map(|e| (e.name.clone(), e.into()))
+                        .collect();
+                    Result::<(Arc<DashMap<String, ChannelEmote>>, Instant), PlatformError>::Ok((
+                        Arc::new(emotes),
+                        Instant::now(),
+                    ))
+                }
+            })
+            .await?;
 
         Ok(gotten.0.clone())
     }
@@ -131,7 +157,7 @@ impl Default for FfzClient {
 #[derive(Debug, Deserialize)]
 pub struct DefaultSets {
     default_sets: Vec<u64>,
-    sets: HashMap<String, FfzSet>
+    sets: HashMap<String, FfzSet>,
 }
 
 #[test]
@@ -141,9 +167,12 @@ fn ffz_test_deser() {
     match serde_json::from_str::<RoomEmotes>(TEST) {
         Ok(_) => (),
         Err(e) => {
-            eprintln!("{}", &TEST[(e.column().saturating_sub(50))..(e.column()+50).min(TEST.len())]);
+            eprintln!(
+                "{}",
+                &TEST[(e.column().saturating_sub(50))..(e.column() + 50).min(TEST.len())]
+            );
             panic!("{e}")
-        },
+        }
     }
 }
 
@@ -158,7 +187,8 @@ impl<'a> IntoIterator for &'a RoomEmotes {
     type IntoIter = impl Iterator<Item = ChannelEmote>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.sets.iter()
+        self.sets
+            .iter()
             .flat_map(|s| &s.1.emoticons)
             .map(|e| e.into())
     }
@@ -175,10 +205,10 @@ pub struct FfzEmote {
     #[serde(with = "either::serde_untagged")]
     pub id: either::Either<u64, String>,
     pub name: String,
-    pub animated: Option<IgnoredAny>
+    pub animated: Option<IgnoredAny>,
 }
 
 #[derive(Debug, Deserialize)]
 struct FfzEmoteQuery {
-    emote: FfzEmote
+    emote: FfzEmote,
 }

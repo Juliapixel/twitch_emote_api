@@ -10,6 +10,7 @@ debug=true
 axum = { version = "0.7", features = ["http2"] }
 bytes = "1.7"
 clap = { version = "4.5", features = ["derive", "env"] }
+config = "0.14"
 dashmap = { version = "6.1", features = ["serde"] }
 dotenvy = { version = "0.15", features = ["clap"] }
 either = { version = "1.13", features = ["serde"] }
@@ -26,12 +27,14 @@ regex = "1.10"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "gzip", "brotli", "deflate", "json"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
+sled = "0.34"
 thiserror = "1.0"
 tokio = { version = "1.40", features = ["full"] }
 tower = { version = "0.5", features = ["tokio"] }
 tower-http = { version = "0.5", features = ["compression-br", "compression-gzip", "cors"] }
 url = "2.5"
 
+# image-webp is bugged on current releases erm!
 [patch.crates-io]
 image-webp = { git = "https://github.com/image-rs/image-webp.git" }
 image = { git = "https://github.com/image-rs/image.git" }
