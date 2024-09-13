@@ -8,15 +8,15 @@ importers:
 
   .:
     dependencies:
-      js-lib:
-        specifier: file:../js-lib
-        version: twitch-emote-client@file:../js-lib
       three:
         specifier: ^0.168.0
         version: 0.168.0
       tmi.js:
         specifier: ^1.8.5
         version: 1.8.5
+      twitch-emote-client:
+        specifier: file:../twitch-emote-client
+        version: file:../twitch-emote-client
     devDependencies:
       '@types/three':
         specifier: ^0.168.0
@@ -333,8 +333,8 @@ packages:
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
 
-  twitch-emote-client@file:../js-lib:
-    resolution: {directory: ../js-lib, type: directory}
+  twitch-emote-client@file:../twitch-emote-client:
+    resolution: {directory: ../twitch-emote-client, type: directory}
 
   vite@5.4.3:
     resolution: {integrity: sha512-IH+nl64eq9lJjFqU+/yrRnrHPVTlgy42/+IzbOdaFDVlyLgI/wDlf+FCobXLX1cT0X5+7LMyH1mIy2xJdLfo8Q==}
@@ -611,7 +611,7 @@ snapshots:
 
   tr46@0.0.3: {}
 
-  twitch-emote-client@file:../js-lib:
+  twitch-emote-client@file:../twitch-emote-client:
     dependencies:
       three: 0.168.0
       tmi-js: tmi.js@1.8.5

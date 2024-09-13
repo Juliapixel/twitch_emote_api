@@ -11,7 +11,7 @@ import {
     Vector3,
     WebGLRenderer
 } from "three";
-import { ChannelEmote, EmotesClient, EmoteMaterial, EmoteObject } from "js-lib";
+import { ChannelEmote, EmotesClient, EmoteMaterial, EmoteObject } from "twitch-emote-client";
 
 // a default array of twitch channels to join
 let channels = ["julialuxel"];
@@ -131,19 +131,28 @@ const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
         velocity: new Vector3(
             Math.random() - 0.5,
             Math.random() - 0.5,
-            Math.random() - 0.5
+            0
         )
             .normalize()
-            .multiply(new Vector3(3, 3, 1))
+            .multiply(new Vector3(2, 2, 1))
     };
 
-    let slicedEmotes = emotes.slice(0, 8);
+    let slicedEmotes = emotes.slice(0, 12);
     let processedEmotes = 0;
+    let i = 0;
     for (const emote of slicedEmotes) {
+        // gotta do this cuz new EmoteObject takes the wrong i for some reason!
+        let curI = i;
+        i++
         new EmoteObject(channel, client.config.emotesApi, emote, (obj) => {
-            obj.position.x = Math.random() * 4 - 2;
-            obj.position.y = Math.random() * 4 - 2;
-            obj.position.z = Math.random() * 4 - 2;
+            let ratio = 0;
+            if (slicedEmotes.length !== 1) {
+                ratio = curI / slicedEmotes.length - 1;
+            }
+
+            obj.position.x = (Math.random() * 4 - 2) * ratio ;
+            obj.position.y = (Math.random() * 4 - 2) * ratio ;
+            obj.position.z = (Math.random() * 4 - 2) * ratio ;
 
             group.add(obj);
             processedEmotes++;
@@ -155,6 +164,7 @@ const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
                 sceneEmoteArray.push(group);
             }
         });
+
     }
 
     group.update = () => {
