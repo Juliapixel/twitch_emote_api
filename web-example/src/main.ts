@@ -137,7 +137,7 @@ const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
             .multiply(new Vector3(3, 3, 1))
     };
 
-    let slicedEmotes = emotes.slice(0, 8)
+    let slicedEmotes = emotes.slice(0, 8);
     let processedEmotes = 0;
     for (const emote of slicedEmotes) {
         new EmoteObject(channel, client.config.emotesApi, emote, (obj) => {
@@ -145,11 +145,12 @@ const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
             obj.position.y = Math.random() * 4 - 2;
             obj.position.z = Math.random() * 4 - 2;
 
-            group.add(obj)
+            group.add(obj);
             processedEmotes++;
             // wait until all emotes have been processed properly to spawn the group
+            // also SURELY this doesnt cause any race conditions right
             if (processedEmotes === slicedEmotes.length) {
-                group.data.timestamp = Date.now()
+                group.data.timestamp = Date.now();
                 scene.add(group);
                 sceneEmoteArray.push(group);
             }
@@ -159,7 +160,9 @@ const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
     group.update = () => {
         for (let child of group.children) {
             if (child instanceof EmoteObject) {
-                child.animateTexture((performance.now() + group.data.timestamp) / 1000);
+                child.animateTexture(
+                    (performance.now() + group.data.timestamp) / 1000
+                );
             }
         }
         let progress = (Date.now() - group.data.timestamp) / group.data.lifespan;
@@ -177,5 +180,8 @@ const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
 };
 
 setInterval(() => {
-    spawnEmote([{id: "64cd931ed3cf2f1c8cca5264", name: "juh", platform: "7tv"}], "julialuxel");
+    spawnEmote(
+        [{ id: "64cd931ed3cf2f1c8cca5264", name: "juh", platform: "7tv" }],
+        "julialuxel"
+    );
 }, 1000);
