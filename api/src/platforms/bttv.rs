@@ -1,5 +1,5 @@
 use std::{
-    iter::Map,
+    iter::{Chain, Map},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -132,15 +132,22 @@ impl Default for BttvClient {
 #[serde(rename_all = "camelCase")]
 pub struct UserEmotes {
     pub shared_emotes: Vec<BttvEmote>,
+    pub channel_emotes: Vec<BttvEmote>,
 }
 
 impl<'a> IntoIterator for &'a UserEmotes {
     type Item = ChannelEmote;
 
-    type IntoIter = Map<std::slice::Iter<'a, BttvEmote>, fn(&BttvEmote) -> ChannelEmote>;
+    type IntoIter = Map<
+        Chain<std::slice::Iter<'a, BttvEmote>, std::slice::Iter<'a, BttvEmote>>,
+        fn(&BttvEmote) -> ChannelEmote,
+    >;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.shared_emotes.iter().map(|e| e.into())
+        self.shared_emotes
+            .iter()
+            .chain(self.channel_emotes.iter())
+            .map(|e| e.into())
     }
 }
 

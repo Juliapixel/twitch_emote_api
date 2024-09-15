@@ -45,10 +45,7 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
         )
         .route("/user/:username", get(emotes_by_username))
         .layer(tower_http::cors::CorsLayer::permissive())
-        .layer(
-            tower_http::compression::CompressionLayer::new()
-                .no_zstd(),
-        )
+        .layer(tower_http::compression::CompressionLayer::new().no_zstd())
         .with_state(
             EmoteManager::new(ARGS.client_id.as_str(), ARGS.client_secret.as_str())
                 .await

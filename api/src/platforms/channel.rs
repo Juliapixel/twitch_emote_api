@@ -52,15 +52,15 @@ impl ChannelEmotes {
 
                 match seventv_resp {
                     Ok(resp) => emotes.extend(resp.into_iter().map(|e| (e.name.clone(), e))),
-                    Err(e) => error!("{e}"),
+                    Err(e) => error!("{e} from 7tv"),
                 }
                 match bttv_resp {
                     Ok(resp) => emotes.extend(resp.into_iter().map(|e| (e.name.clone(), e))),
-                    Err(e) => error!("{e}"),
+                    Err(e) => error!("{e} from bttv"),
                 }
                 match ffz_resp {
                     Ok(resp) => emotes.extend(resp.into_iter().map(|e| (e.name.clone(), e))),
-                    Err(e) => error!("{e}"),
+                    Err(e) => error!("{e} from ffz"),
                 }
 
                 let emotes: Arc<DashMap<String, ChannelEmote>> = emotes.into();

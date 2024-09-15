@@ -11,6 +11,7 @@ use axum::{
 use bytes::Bytes;
 use http::header::CACHE_CONTROL;
 use image::{AnimationDecoder, DynamicImage};
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use reqwest::header::CONTENT_TYPE;
 use serde::Serialize;
 
@@ -144,22 +145,26 @@ impl Frame {
     fn try_from_iter(
         iter: impl IntoIterator<Item = Result<image::Frame, image::ImageError>>,
     ) -> Result<Vec<Self>, image::ImageError> {
-        let mut frames = Vec::new();
-        for i in iter {
-            let frame = i?;
-            let mut buf = Cursor::new(Vec::new());
-            frame.buffer().write_to(&mut buf, DEFAULT_IMAGE_FORMAT)?;
-            let buf = buf.into_inner();
+        let decoded: Vec<image::Frame> = iter.into_iter().try_collect()?;
+        let frames: Vec<Result<Self, image::ImageError>> = decoded
+            .into_iter()
+            .par_bridge()
+            .map(|frame| {
+                let mut buf = Cursor::new(Vec::new());
+                frame.buffer().write_to(&mut buf, DEFAULT_IMAGE_FORMAT)?;
+                let buf = buf.into_inner();
 
-            // i love coding
-            let delay = std::time::Duration::from(frame.delay()).as_secs_f64();
+                // i love coding
+                let delay = std::time::Duration::from(frame.delay()).as_secs_f64();
 
-            frames.push(Frame {
-                delay,
-                data: buf.into(),
-            });
-        }
-        Ok(frames)
+                Ok(Frame {
+                    delay,
+                    data: buf.into(),
+                })
+            })
+            .collect();
+
+        frames.into_iter().try_collect()
     }
 }
 
