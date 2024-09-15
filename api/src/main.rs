@@ -47,8 +47,6 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
         .layer(tower_http::cors::CorsLayer::permissive())
         .layer(
             tower_http::compression::CompressionLayer::new()
-                .br(true)
-                .gzip(true)
                 .no_zstd(),
         )
         .with_state(
