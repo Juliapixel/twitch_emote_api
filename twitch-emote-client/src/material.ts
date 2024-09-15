@@ -49,7 +49,12 @@ export class EmoteMaterial extends MeshBasicMaterial {
             return;
         }
 
-        fetch(`${apiUrl}/emote/${channel}/${emote.name}`).then(async (resp) => {
+        let urlPrefix = (channel == "globals" || channel == "global") ?
+            `${apiUrl}/emote/globals/${emote.platform}` :
+            `${apiUrl}/emote/${channel.replace(/^\#/, "")}`
+
+
+        fetch(`${urlPrefix}/${emote.name}`).then(async (resp) => {
             let emoteInfo: EmoteInfo = await resp.json();
             this.animationLength = emoteInfo.frame_delays.reduce(
                 (sum, delay) => (sum += delay)
@@ -62,7 +67,7 @@ export class EmoteMaterial extends MeshBasicMaterial {
                 let textureLoader = new TextureLoader(new LoadingManager());
 
                 textureLoader
-                    .loadAsync(`${apiUrl}/emote/${channel}/${emote.name}/${i}.webp`)
+                    .loadAsync(`${urlPrefix}/${emote.name}/${i}.webp`)
                     .then((tex) => {
                         if (i === 0) {
                             this.map = tex;

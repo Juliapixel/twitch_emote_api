@@ -1,4 +1,4 @@
-use std::{env::current_dir, sync::LazyLock};
+use std::sync::LazyLock;
 
 use api::{
     cli::ARGS,
@@ -12,7 +12,6 @@ use axum::{
     routing::get,
     Json,
 };
-use config::builder::DefaultState;
 use http::{header::CACHE_CONTROL, HeaderValue, StatusCode};
 
 #[global_allocator]
@@ -22,20 +21,20 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 async fn main() -> Result<(), Box<dyn core::error::Error>> {
     env_logger::init();
 
-    let config_path = current_dir().unwrap().with_file_name("config.yml");
+    // let config_path = current_dir().unwrap().with_file_name("config.yml");
 
-    let config = config::ConfigBuilder::<DefaultState>::default()
-        .add_source(config::File::new(
-            &config_path.to_string_lossy(),
-            config::FileFormat::Yaml,
-        ))
-        .build()?;
+    // let config = config::ConfigBuilder::<DefaultState>::default()
+    //     .add_source(config::File::new(
+    //         &config_path.to_string_lossy(),
+    //         config::FileFormat::Yaml,
+    //     ))
+    //     .build()?;
     // let db_path = config.get::<std::path::PathBuf>("db_path")?;
 
     let app = axum::Router::new()
         .route("/emote/:channel/:name/:frame", get(channel_emote_frame))
         .route("/emote/:channel/:name", get(channel_emote_info))
-        .route("/emote/globals/:platform/", get(platform_global_emotes))
+        .route("/emote/globals/:platform", get(platform_global_emotes))
         .route(
             "/emote/globals/:platform/:name",
             get(platform_global_emote_info),
@@ -135,10 +134,21 @@ async fn platform_global_emote_info(
     Path((platform, emote)): Path<(Platform, String)>,
     State(manager): State<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
-    match manager.get_global_emotes(platform).await?.get(&emote) {
-        Some(global) => Ok(Json::from(global).into_response()),
-        None => Err(PlatformError::EmoteNotFound),
-    }
+    static CACHE_HEADER: LazyLock<HeaderValue> = LazyLock::new(|| {
+        format!("max-age={}, public", { 60 * 60 * 24 })
+            .try_into()
+            .expect("oh no")
+    });
+
+    let emotes = manager.get_global_emotes(platform).await?;
+    let info = emotes.get(&emote).ok_or(PlatformError::EmoteNotFound)?;
+    let emote = manager.get_emote(info.platform, &info.id).await?;
+
+    let mut resp = Json::from(EmoteInfo::new(info.value(), &emote)).into_response();
+
+    resp.headers_mut()
+        .insert(CACHE_CONTROL, CACHE_HEADER.clone());
+    Ok(resp)
 }
 
 async fn platform_global_emote_frame(

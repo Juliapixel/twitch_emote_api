@@ -11,7 +11,7 @@ import {
     Vector3,
     WebGLRenderer
 } from "three";
-import { ChannelEmote, EmotesClient, EmoteMaterial, EmoteObject } from "twitch-emote-client";
+import { ChannelEmote, EmotesClient, EmoteMaterial, EmoteObject, CallbackEmoteInfo } from "twitch-emote-client";
 
 // a default array of twitch channels to join
 let channels = ["julialuxel"];
@@ -119,7 +119,7 @@ client.on("emote", (emotes, channel) => {
 /*
  ** Handle Twitch Chat Emotes
  */
-const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
+const spawnEmote = (emotes: CallbackEmoteInfo[], channel: string) => {
     //prevent lag caused by emote buildup when you tab out from the page for a while
     if (performance.now() - lastFrame > 1000) return;
 
@@ -144,7 +144,7 @@ const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
         // gotta do this cuz new EmoteObject takes the wrong i for some reason!
         let curI = i;
         i++
-        new EmoteObject(channel, client.config.emotesApi, emote, (obj) => {
+        new EmoteObject(emote.source, client.config.emotesApi, emote, (obj) => {
             let ratio = 0;
             if (slicedEmotes.length !== 1) {
                 ratio = curI / slicedEmotes.length - 1;
@@ -191,7 +191,7 @@ const spawnEmote = (emotes: ChannelEmote[], channel: string) => {
 
 setInterval(() => {
     spawnEmote(
-        [{ id: "64cd931ed3cf2f1c8cca5264", name: "juh", platform: "7tv" }],
+        [{ id: "64cd931ed3cf2f1c8cca5264", name: "juh", platform: "7tv", source: "julialuxel" }],
         "julialuxel"
     );
 }, 1000);

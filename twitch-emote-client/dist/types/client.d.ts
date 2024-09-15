@@ -9,17 +9,22 @@ export interface ChannelEmote {
     id: string;
     name: string;
 }
-type EmoteCallback = (emotes: ChannelEmote[], channel: string) => void;
+export type CallbackEmoteInfo = ChannelEmote & {
+    source: string;
+};
+export type EmoteCallback = (emotes: CallbackEmoteInfo[], channelMessage: string) => void;
 export declare class EmotesClient {
     config: ClientConfig;
     private emoteCache;
     private listeners;
     private refreshInterval;
+    private chatClient;
     constructor(config: Partial<ClientConfig>);
+    /** please call this before dropping xqcL */
     close(): void;
-    handleMessage(channel: string, state: ChatUserstate, message: string, self: boolean): void;
+    handleMessage(channel: string, _state: ChatUserstate, message: string, _self: boolean): void;
     updateChannelEmotes(channel: string): Promise<void>;
+    updateGlobalEmotes(): Promise<void>;
     on(event: "emote", callback: EmoteCallback): void;
 }
-export {};
 //# sourceMappingURL=client.d.ts.map

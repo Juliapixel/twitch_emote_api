@@ -18,24 +18,31 @@ export interface ChannelEmote {
     name: string;
 }
 
-type EmoteCallback = (emotes: ChannelEmote[], channel: string) => void;
+export type CallbackEmoteInfo = ChannelEmote & {source: string};
+
+export type EmoteCallback = (emotes: CallbackEmoteInfo[], channelMessage: string) => void;
 
 export class EmotesClient {
     public config: ClientConfig;
     private emoteCache: Map<string, Map<string, ChannelEmote>> = new Map();
     private listeners: Map<string, EmoteCallback[]> = new Map();
     private refreshInterval: number;
+    private chatClient: TmiClient;
 
     constructor(config: Partial<ClientConfig>) {
         this.config = Object.assign(defaultConfig, config);
+        this.config.channels.map((c) => c.toLowerCase())
 
         let tmiClient = new TmiClient({
             channels: window.structuredClone(config.channels)
         });
         tmiClient.on("message", this.handleMessage.bind(this));
         tmiClient.connect();
+        this.chatClient = tmiClient;
 
         this.config.channels.forEach((c) => this.updateChannelEmotes(c));
+        this.updateGlobalEmotes();
+
         this.refreshInterval = window.setInterval(
             () => {
                 this.config.channels.forEach((c) => this.updateChannelEmotes(c));
@@ -44,23 +51,31 @@ export class EmotesClient {
         );
     }
 
+    /** please call this before dropping xqcL */
     close() {
+        this.chatClient.disconnect();
         clearInterval(this.refreshInterval);
     }
 
     handleMessage(
         channel: string,
-        state: ChatUserstate,
+        _state: ChatUserstate,
         message: string,
-        self: boolean
+        _self: boolean
     ) {
         let channelEmotes = this.emoteCache.get(channel.substring(1));
-        let emotes: ChannelEmote[] = [];
-        if (channelEmotes !== undefined) {
+        let globalEmotes = this.emoteCache.get("global");
+        let emotes: CallbackEmoteInfo[] = [];
+        if (channelEmotes !== undefined && globalEmotes !== undefined) {
             for (const word of message.split(" ")) {
-                let emote = channelEmotes.get(word);
-                if (emote) {
-                    emotes.push(emote);
+                let channelEmote = channelEmotes.get(word);
+                let globalEmote = globalEmotes.get(word);
+                if (channelEmote) {
+                    (channelEmote as CallbackEmoteInfo).source = channel;
+                    emotes.push(channelEmote as CallbackEmoteInfo)
+                } else if (globalEmote) {
+                    (globalEmote as CallbackEmoteInfo).source = "globals";
+                    emotes.push(globalEmote as CallbackEmoteInfo)
                 }
             }
         }
@@ -77,6 +92,21 @@ export class EmotesClient {
             await fetch(this.config.emotesApi + "/user/" + channel)
         ).json();
         this.emoteCache.set(channel, new Map(Object.entries(resp)));
+    }
+
+    async updateGlobalEmotes() {
+        let globals: Map<string, ChannelEmote> = new Map();
+        for (const platform of ["7tv", "bttv", "ffz"]) {
+            let resp: Object = await (
+                await fetch(this.config.emotesApi + "/emote/globals/" + platform)
+            ).json();
+
+            Object.entries(resp).forEach(([name, emoteInfo]) => {
+                globals.set(name, emoteInfo)
+            })
+
+        }
+        this.emoteCache.set("global", globals)
     }
 
     on(event: "emote", callback: EmoteCallback) {
