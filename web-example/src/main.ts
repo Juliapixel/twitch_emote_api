@@ -14,7 +14,7 @@ import {
 import { ChannelEmote, EmotesClient, EmoteMaterial, EmoteObject, CallbackEmoteInfo } from "twitch-emote-client";
 
 // a default array of twitch channels to join
-let channels = ["julialuxel"];
+let channels: string[] = [];
 
 // the following few lines of code will allow you to add ?channels=channel1,channel2,channel3 to the URL in order to override the default array of channels
 const params = new URL(window.location.toString()).searchParams;
@@ -28,9 +28,12 @@ if (params.has("channels") || params.has("channel")) {
 
 // performance stats enabled using ?stats=true in the browser URL
 let stats: Stats | undefined;
+let emoteCountPanel: Stats.Panel | undefined
 if (params.get("stats") === "true") {
     stats = new Stats();
-    stats.showPanel(1);
+    emoteCountPanel = new Stats.Panel("EMOTES", "#f5b942", "#523909");
+    stats.addPanel(emoteCountPanel)
+    stats.showPanel(0);
     document.body.appendChild(stats.dom);
 }
 
@@ -104,7 +107,10 @@ function draw() {
     }
 
     renderer.render(scene, camera);
-    if (stats) stats.end();
+    if (stats && emoteCountPanel) {
+        stats.end()
+        emoteCountPanel.update(sceneEmoteArray.map((group) => group.children.length).reduce((sum, cur) => sum += cur), 50)
+    };
 }
 
 /*
@@ -189,9 +195,18 @@ const spawnEmote = (emotes: CallbackEmoteInfo[], channel: string) => {
     };
 };
 
-setInterval(() => {
-    spawnEmote(
-        [{ id: "64cd931ed3cf2f1c8cca5264", name: "juh", platform: "7tv", source: "julialuxel" }],
-        "julialuxel"
-    );
-}, 1000);
+const exampleEmotes: CallbackEmoteInfo[] = [
+    {id: "", name: "juh", platform: "7tv", source: "julialuxel"},
+    {id: "", name: "jih", platform: "7tv", source: "julialuxel"},
+    {id: "", name: "JUH", platform: "7tv", source: "julialuxel"},
+    {id: "", name: "jah", platform: "7tv", source: "julialuxel"},
+];
+
+if (channels.length === 0) {
+    setInterval(() => {
+        spawnEmote(
+            [exampleEmotes[Math.floor(Math.random() * exampleEmotes.length)]],
+            "julialuxel"
+        );
+    }, 1000);
+}
