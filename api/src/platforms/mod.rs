@@ -1,12 +1,16 @@
 use std::{fmt::Display, ops::Deref, sync::Arc, time::Duration};
 
 use axum::response::IntoResponse;
-use channel::{ChannelEmote, ChannelEmotes};
+use channel::ChannelEmote;
 use dashmap::DashMap;
 use http::StatusCode;
+use log::error;
 use serde::{Deserialize, Serialize};
 
-use crate::emote::{Emote, EmoteError};
+use crate::{
+    cache::Cache,
+    emote::{Emote, EmoteError},
+};
 
 pub mod bttv;
 pub mod channel;
@@ -109,7 +113,7 @@ pub struct EmoteManager {
     seventv: SevenTvClient,
     ffz: FfzClient,
     bttv: BttvClient,
-    channel_emotes: ChannelEmotes,
+    channel_emotes: Arc<Cache<String, Arc<DashMap<String, ChannelEmote>>>>,
 }
 
 impl EmoteManager {
@@ -122,7 +126,7 @@ impl EmoteManager {
             seventv: Default::default(),
             ffz: Default::default(),
             bttv: Default::default(),
-            channel_emotes: Default::default(),
+            channel_emotes: Arc::new(Cache::new(Duration::from_secs(60 * 15))),
         })
     }
 
@@ -139,7 +143,37 @@ impl EmoteManager {
         &self,
         channel: &str,
     ) -> Result<Arc<DashMap<String, ChannelEmote>>, PlatformError> {
-        self.channel_emotes.get_or_track(channel, self).await
+        match self.channel_emotes.get(channel).map(|i| i.clone()) {
+            Some(emotes) => Ok(emotes),
+            None => {
+                let mut emotes = DashMap::<String, ChannelEmote>::new();
+
+                let user_id = self.twitch.get_channel_id(channel).await?;
+
+                let (seventv_resp, bttv_resp, ffz_resp) = futures::join!(
+                    self.seventv.get_channel_emotes(&user_id),
+                    self.bttv.get_channel_emotes(&user_id),
+                    self.ffz.get_channel_emotes(&user_id)
+                );
+
+                match seventv_resp {
+                    Ok(resp) => emotes.extend(resp.into_iter().map(|e| (e.name.clone(), e))),
+                    Err(e) => error!("{e} from 7tv"),
+                }
+                match bttv_resp {
+                    Ok(resp) => emotes.extend(resp.into_iter().map(|e| (e.name.clone(), e))),
+                    Err(e) => error!("{e} from bttv"),
+                }
+                match ffz_resp {
+                    Ok(resp) => emotes.extend(resp.into_iter().map(|e| (e.name.clone(), e))),
+                    Err(e) => error!("{e} from ffz"),
+                }
+
+                let emotes: Arc<DashMap<String, ChannelEmote>> = emotes.into();
+                self.channel_emotes.insert(channel.into(), emotes.clone());
+                Ok(emotes)
+            }
+        }
     }
 
     pub async fn get_global_emotes(
