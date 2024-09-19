@@ -146,7 +146,6 @@ dependencies = [
  "log",
  "mime",
  "parking_lot 0.12.3",
- "rayon",
  "regex",
  "reqwest",
  "serde",
@@ -1140,7 +1139,7 @@ dependencies = [
 [[package]]
 name = "image"
 version = "0.25.2"
-source = "git+https://github.com/image-rs/image.git#4afe9572b5c867cf4d07cd88107e8c49354de9f3"
+source = "git+https://github.com/juliapixel/image.git?branch=webp_patch#808d78f763c16c436631cf4498f3bb5ea5f5d6d2"
 dependencies = [
  "bytemuck",
  "byteorder-lite",
@@ -1162,7 +1161,7 @@ dependencies = [
 [[package]]
 name = "image-webp"
 version = "0.1.3"
-source = "git+https://github.com/image-rs/image-webp.git#ca1fc0201af3bbf26b73f51b219af52c67ef2d9f"
+source = "git+https://github.com/image-rs/image-webp.git?rev=c29d6d4587618b43fb8ddeed46638fca86ad0291#c29d6d4587618b43fb8ddeed46638fca86ad0291"
 dependencies = [
  "byteorder-lite",
  "quick-error",
