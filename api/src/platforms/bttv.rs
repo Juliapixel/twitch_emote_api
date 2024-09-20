@@ -155,4 +155,5 @@ impl<'a> IntoIterator for &'a UserEmotes {
 pub struct BttvEmote {
     pub id: String,
     pub code: String,
+    pub animated: bool,
 }

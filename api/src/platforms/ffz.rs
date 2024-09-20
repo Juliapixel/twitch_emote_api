@@ -78,6 +78,8 @@ impl EmotePlatform for FfzClient {
             return Ok(hit.clone());
         }
 
+        // TODO: get rid of this query, we already store whether an emote is
+        // animated or not
         let emote_query = self
             .client
             .get(format!("https://api.frankerfacez.com/v1/emote/{id}"))
