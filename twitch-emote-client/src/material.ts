@@ -1,7 +1,9 @@
 import {
+    LinearMipMapNearestFilter,
     LoadingManager,
     Material,
     MeshBasicMaterial,
+    NearestFilter,
     Texture,
     TextureLoader,
     Vector2
@@ -82,8 +84,8 @@ export class EmoteMaterial extends MeshBasicMaterial {
             let textureLoader = new TextureLoader(new LoadingManager());
 
             textureLoader.loadAsync(texUrl).then((tex) => {
-                // this is nearest neighbor (i think?)
-                tex.magFilter = 1003;
+                tex.magFilter = NearestFilter;
+                tex.minFilter = LinearMipMapNearestFilter;
                 this.map = tex;
                 this.aspectRatio = emoteInfo.width / emoteInfo.height;
 
