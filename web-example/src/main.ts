@@ -98,14 +98,18 @@ function draw() {
     }
 
     renderer.render(scene, camera);
-    if (stats && emoteCountPanel && sceneEmoteArray.length > 0) {
+    if (stats && emoteCountPanel) {
         stats.end();
-        emoteCountPanel.update(
-            sceneEmoteArray
-                .map((group) => group.children.length)
-                .reduce((sum, cur) => (sum += cur)),
-            50
-        );
+        if (sceneEmoteArray.length > 0) {
+            emoteCountPanel.update(
+                sceneEmoteArray
+                    .map((group) => group.children.length)
+                    .reduce((sum, cur) => (sum += cur)),
+                50
+            );
+        } else {
+            emoteCountPanel.update(0, 50)
+        }
     }
 }
 
