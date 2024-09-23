@@ -68,20 +68,19 @@ impl Emote {
         let (atlas, frames, width, height) = match format {
             Format::Gif => {
                 let decoder = image::codecs::gif::GifDecoder::new(Cursor::new(data))?;
-                let (atlas, frames, width, height) = atlas_and_frames_from_iter(decoder.into_frames())?;
+                let (atlas, frames, width, height) =
+                    atlas_and_frames_from_iter(decoder.into_frames())?;
                 (Some(atlas), frames, width, height)
             }
             Format::WebP => {
                 let mut decoder = image::codecs::webp::WebPDecoder::new(Cursor::new(data))?;
                 if decoder.has_animation() {
                     decoder.set_background_color(image::Rgba([0; 4]))?;
-                    let (atlas, frames, width, height) = atlas_and_frames_from_iter(decoder.into_frames())?;
+                    let (atlas, frames, width, height) =
+                        atlas_and_frames_from_iter(decoder.into_frames())?;
                     (Some(atlas), frames, width, height)
                 } else {
-                    let decoded = image::load_from_memory_with_format(
-                        data,
-                        Format::WebP,
-                    )?;
+                    let decoded = image::load_from_memory_with_format(data, Format::WebP)?;
                     let frame = Frame::try_from(&decoded)?;
                     (None, vec![frame], decoded.width(), decoded.height())
                 }
@@ -90,7 +89,7 @@ impl Emote {
                 let decoded = image::load_from_memory_with_format(data, f)?;
                 let frame = Frame::try_from(&decoded)?;
                 (None, vec![frame], decoded.width(), decoded.height())
-            },
+            }
         };
 
         Ok(Self {
@@ -141,7 +140,7 @@ pub struct EmoteInfo<'a> {
     frame_count: usize,
     frame_delays: Vec<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    atlas_info: Option<AtlasInfo>
+    atlas_info: Option<AtlasInfo>,
 }
 
 impl<'a> EmoteInfo<'a> {
@@ -156,7 +155,7 @@ impl<'a> EmoteInfo<'a> {
             platform: channel_info.platform,
             frame_count: emote.frames.len(),
             frame_delays: emote.frames.iter().map(|f| f.delay).collect(),
-            atlas_info
+            atlas_info,
         }
     }
 }
@@ -164,7 +163,7 @@ impl<'a> EmoteInfo<'a> {
 #[derive(Debug, Serialize)]
 pub struct AtlasInfo {
     x_size: u32,
-    y_size: u32
+    y_size: u32,
 }
 
 impl AtlasInfo {
