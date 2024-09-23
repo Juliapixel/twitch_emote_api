@@ -32,8 +32,10 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
     // let db_path = config.get::<std::path::PathBuf>("db_path")?;
 
     let app = axum::Router::new()
+        .route("/user/:username", get(emotes_by_username))
         .route("/emote/:channel/:name/:frame", get(channel_emote_frame))
         .route("/emote/:channel/:name", get(channel_emote_info))
+        .route("/emote/:channel/:name/atlas.webp", get(channel_emote_atlas))
         .route("/emote/globals/:platform", get(platform_global_emotes))
         .route(
             "/emote/globals/:platform/:name",
@@ -43,7 +45,6 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
             "/emote/globals/:platform/:name/:frame",
             get(platform_global_emote_frame),
         )
-        .route("/user/:username", get(emotes_by_username))
         .layer(tower_http::cors::CorsLayer::permissive())
         .layer(tower_http::compression::CompressionLayer::new().no_zstd())
         .with_state(
@@ -116,6 +117,21 @@ async fn channel_emote_info(
     resp.headers_mut()
         .insert(CACHE_CONTROL, CACHE_HEADER.clone());
     Ok(resp)
+}
+
+async fn channel_emote_atlas(
+    Path((channel, name)): Path<(String, String)>,
+    State(manager): State<EmoteManager>,
+) -> Result<Response<Body>, PlatformError> {
+    let emotes = manager.get_channel_emotes(&channel).await?;
+    let info = emotes.get(&name).ok_or(PlatformError::EmoteNotFound)?;
+    let emote = manager.get_emote(info.platform, &info.id).await?;
+
+    if let Some(atlas) = emote.atlas {
+        Ok(atlas.into_response())
+    } else {
+        Ok((StatusCode::NOT_FOUND, ()).into_response())
+    }
 }
 
 async fn platform_global_emotes(

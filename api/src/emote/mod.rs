@@ -1,20 +1,15 @@
-use std::{
-    io::Cursor,
-    sync::{Arc, LazyLock},
-};
+use std::{io::Cursor, sync::Arc};
 
-use axum::{
-    body::Body,
-    http::{HeaderValue, Response},
-    response::IntoResponse,
-};
-use bytes::Bytes;
-use http::header::CACHE_CONTROL;
-use image::{AnimationDecoder, DynamicImage};
-use reqwest::header::CONTENT_TYPE;
+use atlas::AtlasTexture;
+use frame::Frame;
+use http::HeaderValue;
+use image::AnimationDecoder;
 use serde::Serialize;
 
 use crate::platforms::{channel::ChannelEmote, Platform};
+
+pub mod atlas;
+pub mod frame;
 
 pub const DEFAULT_IMAGE_FORMAT: image::ImageFormat = image::ImageFormat::WebP;
 
@@ -32,10 +27,35 @@ pub enum EmoteError {
     MissingContentTypeHeader,
 }
 
+// AWFUL code
+// TODO: make it less awful
+fn atlas_and_frames_from_iter(
+    frames: image::Frames,
+) -> Result<(AtlasTexture, Vec<Frame>, u32, u32), EmoteError> {
+    let collected_iter = frames.into_iter().collect_frames()?;
+    let (width, height) = {
+        let first = collected_iter.first().unwrap().buffer();
+        (first.width(), first.height())
+    };
+
+    let frames = Frame::try_from_iter(collected_iter.iter())?;
+    let atlas = AtlasTexture::new(
+        collected_iter.iter().map(|f| f.buffer()),
+        width,
+        height,
+        collected_iter.len() as u32,
+    )?;
+
+    Ok((atlas, frames, width, height))
+}
+
 #[derive(Debug, Clone)]
 pub struct Emote {
     pub id: Arc<str>,
+    pub width: u32,
+    pub height: u32,
     pub frames: Arc<[Frame]>,
+    pub atlas: Option<AtlasTexture>,
 }
 
 impl Emote {
@@ -45,33 +65,40 @@ impl Emote {
         id: impl Into<Arc<str>>,
     ) -> Result<Self, EmoteError> {
         use image::ImageFormat as Format;
-        let frames: Arc<[Frame]> = match format {
+        let (atlas, frames, width, height) = match format {
             Format::Gif => {
                 let decoder = image::codecs::gif::GifDecoder::new(Cursor::new(data))?;
-                Frame::try_from_iter(decoder.into_frames())?.into()
+                let (atlas, frames, width, height) = atlas_and_frames_from_iter(decoder.into_frames())?;
+                (Some(atlas), frames, width, height)
             }
             Format::WebP => {
                 let mut decoder = image::codecs::webp::WebPDecoder::new(Cursor::new(data))?;
                 if decoder.has_animation() {
                     decoder.set_background_color(image::Rgba([0; 4]))?;
-                    Frame::try_from_iter(decoder.into_frames())?.into()
+                    let (atlas, frames, width, height) = atlas_and_frames_from_iter(decoder.into_frames())?;
+                    (Some(atlas), frames, width, height)
                 } else {
-                    [Frame::try_from(image::load_from_memory_with_format(
+                    let decoded = image::load_from_memory_with_format(
                         data,
                         Format::WebP,
-                    )?)?]
-                    .into()
+                    )?;
+                    let frame = Frame::try_from(&decoded)?;
+                    (None, vec![frame], decoded.width(), decoded.height())
                 }
             }
-            f => [Frame::try_from(image::load_from_memory_with_format(
-                data, f,
-            )?)?]
-            .into(),
+            f => {
+                let decoded = image::load_from_memory_with_format(data, f)?;
+                let frame = Frame::try_from(&decoded)?;
+                (None, vec![frame], decoded.width(), decoded.height())
+            },
         };
 
         Ok(Self {
             id: id.into(),
-            frames,
+            width,
+            height,
+            frames: frames.into(),
+            atlas,
         })
     }
 
@@ -103,98 +130,48 @@ impl Emote {
     }
 }
 
-#[derive(Clone)]
-pub struct Frame {
-    pub delay: f64,
-    data: Bytes,
-}
-
-impl IntoResponse for Frame {
-    fn into_response(self) -> axum::response::Response {
-        static CACHE_HEADER: LazyLock<HeaderValue> = LazyLock::new(|| {
-            format!("max-age={}, public", { 60 * 60 * 15 })
-                .try_into()
-                .expect("oh no")
-        });
-
-        let mut resp = Response::new(Body::from(self.data));
-        resp.headers_mut().insert(
-            CONTENT_TYPE,
-            DEFAULT_IMAGE_FORMAT
-                .to_mime_type()
-                .try_into()
-                .expect("this should never fail erm"),
-        );
-        resp.headers_mut()
-            .insert(CACHE_CONTROL, CACHE_HEADER.clone());
-        resp
-    }
-}
-
-impl std::fmt::Debug for Frame {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Frame")
-            .field("delay", &self.delay)
-            .field("data", &"just a bunch of bytes...")
-            .finish()
-    }
-}
-
-impl Frame {
-    fn try_from_iter(
-        iter: impl IntoIterator<Item = Result<image::Frame, image::ImageError>>,
-    ) -> Result<Vec<Self>, image::ImageError> {
-        let mut frames = Vec::new();
-        for i in iter {
-            let frame = i?;
-            let mut buf = Cursor::new(Vec::new());
-            frame.buffer().write_to(&mut buf, DEFAULT_IMAGE_FORMAT)?;
-            let buf = buf.into_inner();
-
-            // i love coding
-            let delay = std::time::Duration::from(frame.delay()).as_secs_f64();
-
-            frames.push(Frame {
-                delay,
-                data: buf.into(),
-            });
-        }
-        Ok(frames)
-    }
-}
-
-impl TryFrom<DynamicImage> for Frame {
-    type Error = image::ImageError;
-
-    fn try_from(value: DynamicImage) -> Result<Self, Self::Error> {
-        let mut buf = Cursor::new(Vec::new());
-        value.write_to(&mut buf, DEFAULT_IMAGE_FORMAT)?;
-        let buf = buf.into_inner();
-
-        Ok(Self {
-            delay: f64::MAX,
-            data: buf.into(),
-        })
-    }
-}
-
 #[derive(Debug, Serialize)]
 pub struct EmoteInfo<'a> {
     name: &'a str,
     id: &'a str,
-    frame_count: usize,
+    width: u32,
+    height: u32,
+    animated: bool,
     platform: Platform,
+    frame_count: usize,
     frame_delays: Vec<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    atlas_info: Option<AtlasInfo>
 }
 
 impl<'a> EmoteInfo<'a> {
     pub fn new(channel_info: &'a ChannelEmote, emote: &'a Emote) -> Self {
+        let atlas_info = emote.atlas.as_ref().map(AtlasInfo::new);
         Self {
             name: &channel_info.name,
             id: &emote.id,
+            width: emote.width,
+            height: emote.height,
+            animated: channel_info.animated,
             platform: channel_info.platform,
             frame_count: emote.frames.len(),
             frame_delays: emote.frames.iter().map(|f| f.delay).collect(),
+            atlas_info
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct AtlasInfo {
+    x_size: u32,
+    y_size: u32
+}
+
+impl AtlasInfo {
+    fn new(atlas: &AtlasTexture) -> Self {
+        Self {
+            x_size: atlas.x_size,
+            y_size: atlas.y_size,
         }
     }
 }
