@@ -1,6 +1,12 @@
 use serde::Serialize;
 
-use super::{bttv::BttvEmote, ffz::FfzEmote, seventv::SevenTvEmote, Platform};
+use super::{
+    bttv::BttvEmote,
+    ffz::FfzEmote,
+    seventv::SevenTvEmote,
+    twitch::{TwitchEmote, TwitchEmoteFormat},
+    Platform,
+};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ChannelEmote {
@@ -72,6 +78,28 @@ impl From<&FfzEmote> for ChannelEmote {
             id: value.id.clone().map_left(|id| id.to_string()).into_inner(),
             name: value.name.clone(),
             animated: value.animated.is_some(),
+        }
+    }
+}
+
+impl From<TwitchEmote> for ChannelEmote {
+    fn from(value: TwitchEmote) -> Self {
+        Self {
+            platform: Platform::Twitch,
+            id: value.id,
+            name: value.name,
+            animated: value.format.contains(&TwitchEmoteFormat::Animated),
+        }
+    }
+}
+
+impl From<&TwitchEmote> for ChannelEmote {
+    fn from(value: &TwitchEmote) -> Self {
+        Self {
+            platform: Platform::Twitch,
+            id: value.id.clone(),
+            name: value.name.clone(),
+            animated: value.format.contains(&TwitchEmoteFormat::Animated),
         }
     }
 }

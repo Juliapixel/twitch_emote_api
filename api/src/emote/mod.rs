@@ -158,6 +158,21 @@ impl<'a> EmoteInfo<'a> {
             atlas_info,
         }
     }
+
+    pub fn new_twitch(emote: &'a Emote) -> Self {
+        let atlas_info = emote.atlas.as_ref().map(AtlasInfo::new);
+        Self {
+            name: &emote.id,
+            id: &emote.id,
+            width: emote.width,
+            height: emote.height,
+            animated: emote.atlas.is_some(),
+            platform: Platform::Twitch,
+            frame_count: emote.frames.len(),
+            frame_delays: emote.frames.iter().map(|f| f.delay).collect(),
+            atlas_info,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]

@@ -3,7 +3,6 @@ import { EmoteMaterial } from "./material.js";
 export class EmoteObject extends Mesh {
     constructor(channel, apiUrl, emoteInfo, onLoad) {
         let geometry = new PlaneGeometry();
-        console.log(geometry.attributes.uv);
         super(geometry);
         this.material = new EmoteMaterial(channel, emoteInfo, apiUrl, (mat) => {
             this.scale.x = mat.aspectRatio;

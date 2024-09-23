@@ -31,7 +31,7 @@ export declare class EmotesClient {
     constructor(config: Partial<ClientConfig>);
     /** please call this before dropping xqcL */
     close(): void;
-    handleMessage(channel: string, _state: ChatUserstate, message: string, _self: boolean): void;
+    handleMessage(channel: string, state: ChatUserstate, message: string, _self: boolean): Promise<void>;
     updateChannelEmotes(channel: string): Promise<void>;
     updateGlobalEmotes(): Promise<void>;
     on(event: "emote", callback: EmoteCallback): void;

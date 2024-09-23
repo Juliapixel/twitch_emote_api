@@ -49,6 +49,8 @@ pub enum PlatformError {
     ChannelNotFound,
     #[error("the requested emote wasn't found")]
     EmoteNotFound,
+    #[error("twitch channel emotes should never really be requested")]
+    TwitchChannelEmotes,
     #[error(transparent)]
     RequestFailure(#[from] reqwest::Error),
     #[error("requesting the emote from {0} returned an error")]
@@ -74,6 +76,9 @@ impl IntoResponse for PlatformError {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
             }
             PlatformError::DecodeError(_) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+            }
+            PlatformError::TwitchChannelEmotes => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
             }
         }
@@ -132,7 +137,7 @@ impl EmoteManager {
 
     pub async fn get_emote(&self, platform: Platform, id: &str) -> Result<Emote, PlatformError> {
         match platform {
-            Platform::Twitch => todo!(),
+            Platform::Twitch => self.twitch.get_emote_by_id(id).await,
             Platform::SevenTv => self.seventv.get_emote_by_id(id).await,
             Platform::BetterTtv => self.bttv.get_emote_by_id(id).await,
             Platform::FrancerFaceZ => self.ffz.get_emote_by_id(id).await,

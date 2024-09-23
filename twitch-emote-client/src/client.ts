@@ -69,15 +69,22 @@ export class EmotesClient {
         clearInterval(this.refreshInterval);
     }
 
-    handleMessage(
+    async handleMessage(
         channel: string,
-        _state: ChatUserstate,
+        state: ChatUserstate,
         message: string,
         _self: boolean
     ) {
         let channelEmotes = this.emoteCache.get(channel.substring(1));
         let globalEmotes = this.emoteCache.get("global");
         let emotes: CallbackEmoteInfo[] = [];
+        for (const twitchEmoteId of Object.entries(state.emotes ?? {})) {
+            let info: ChannelEmote = await (await fetch(this.config.emotesApi + `/emote/twitch/${twitchEmoteId[0]}`)).json();
+            (info as CallbackEmoteInfo).source = "twitch_emote";
+            for (let i = 0; i < twitchEmoteId[1].length; i++) {
+                emotes.push(info as CallbackEmoteInfo);
+            }
+        }
         if (channelEmotes !== undefined && globalEmotes !== undefined) {
             for (const word of message.split(" ")) {
                 let channelEmote = channelEmotes.get(word);

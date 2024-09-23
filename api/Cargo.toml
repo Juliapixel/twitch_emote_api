@@ -29,6 +29,7 @@ serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 sled = "0.34"
 thiserror = "1.0"
+tinyvec = { version = "1.8", features = ["serde", "std"] }
 tokio = { version = "1.40", features = ["full"] }
 tower = { version = "0.5", features = ["tokio"] }
 tower-http = { version = "0.5", features = ["compression-br", "compression-gzip", "cors"] }
@@ -41,9 +42,6 @@ image = { git = "https://github.com/juliapixel/image.git", branch = "webp_patch"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 jemallocator = "0.5"
-
-# FUCK this library dawg
-# twitch_api = { version = "0.7.0-rc.7", features = ["client", "helix", "reqwest"] }
 
 [profile.dev.package.image]
 opt-level = 3

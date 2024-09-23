@@ -6,7 +6,7 @@ export declare class EmoteMaterial extends MeshBasicMaterial {
     aspectRatio: number;
     isAnimated: boolean;
     private atlasTex?;
-    constructor(channel: string, emote: ChannelEmote, apiUrl: string, onLoad?: (mat: EmoteMaterial) => void | Promise<void>);
+    constructor(source: string, emote: ChannelEmote, apiUrl: string, onLoad?: (mat: EmoteMaterial) => void | Promise<void>);
     animateTexture(timestamp: number): Vector2[] | undefined;
 }
 //# sourceMappingURL=material.d.ts.map

@@ -12,9 +12,12 @@ use axum::{
     routing::get,
     Json,
 };
+use futures::FutureExt;
 use http::{header::CACHE_CONTROL, HeaderValue, StatusCode};
+use tokio::signal::unix::SignalKind;
 
 #[global_allocator]
+#[cfg(target_os = "linux")]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 #[tokio::main]
@@ -36,6 +39,9 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
         .route("/emote/:channel/:name/:frame", get(channel_emote_frame))
         .route("/emote/:channel/:name", get(channel_emote_info))
         .route("/emote/:channel/:name/atlas.webp", get(channel_emote_atlas))
+        .route("/emote/twitch/:id", get(twitch_emote_info))
+        .route("/emote/twitch/:id/atlas.webp", get(twitch_emote_atlas))
+        .route("/emote/twitch/:id/:frame", get(twitch_emote_frame))
         .route("/emote/globals/:platform", get(platform_global_emotes))
         .route(
             "/emote/globals/:platform/:name",
@@ -56,6 +62,20 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
     let socket =
         tokio::net::TcpListener::bind((std::net::Ipv6Addr::UNSPECIFIED, ARGS.port)).await?;
 
+    #[cfg(unix)]
+    axum::serve(socket, app)
+        .with_graceful_shutdown(async {
+            let mut sigterm = tokio::signal::unix::signal(SignalKind::terminate()).unwrap();
+            let mut sigint = tokio::signal::unix::signal(SignalKind::interrupt()).unwrap();
+
+            futures::select! {
+                _ = Box::pin(sigterm.recv().fuse()) => (),
+                _ = Box::pin(sigint.recv().fuse()) => (),
+            }
+        })
+        .await?;
+
+    #[cfg(not(unix))]
     axum::serve(socket, app).await?;
 
     Ok(())
@@ -126,6 +146,62 @@ async fn channel_emote_atlas(
     let emotes = manager.get_channel_emotes(&channel).await?;
     let info = emotes.get(&name).ok_or(PlatformError::EmoteNotFound)?;
     let emote = manager.get_emote(info.platform, &info.id).await?;
+
+    if let Some(atlas) = emote.atlas {
+        Ok(atlas.into_response())
+    } else {
+        Ok((StatusCode::NOT_FOUND, ()).into_response())
+    }
+}
+
+async fn twitch_emote_info(
+    Path(id): Path<String>,
+    State(manager): State<EmoteManager>,
+) -> Result<Response<Body>, PlatformError> {
+    static CACHE_HEADER: LazyLock<HeaderValue> = LazyLock::new(|| {
+        format!("max-age={}, public", { 60 * 60 * 15 })
+            .try_into()
+            .expect("oh no")
+    });
+
+    let emote = manager.get_emote(Platform::Twitch, &id).await?;
+
+    let mut resp = Json::from(EmoteInfo::new_twitch(&emote)).into_response();
+
+    resp.headers_mut()
+        .insert(CACHE_CONTROL, CACHE_HEADER.clone());
+    Ok(resp)
+}
+
+async fn twitch_emote_frame(
+    Path((id, frame)): Path<(String, String)>,
+    State(manager): State<EmoteManager>,
+) -> Result<Response<Body>, PlatformError> {
+    let frame_requested = frame.to_lowercase();
+    if !frame.ends_with(".webp") {
+        return Err(PlatformError::EmoteNotFound);
+    }
+
+    let number = frame_requested[0..frame_requested.len() - 5].parse::<u32>();
+
+    match number {
+        Ok(frame) => {
+            let emote = manager.get_emote(Platform::Twitch, &id).await?;
+
+            match emote.frames.get(frame as usize) {
+                Some(frame) => Ok(frame.clone().into_response()),
+                None => Ok((StatusCode::NOT_FOUND, ()).into_response()),
+            }
+        }
+        Err(_) => Err(PlatformError::EmoteNotFound),
+    }
+}
+
+async fn twitch_emote_atlas(
+    Path(id): Path<String>,
+    State(manager): State<EmoteManager>,
+) -> Result<Response<Body>, PlatformError> {
+    let emote = manager.get_emote(Platform::Twitch, &id).await?;
 
     if let Some(atlas) = emote.atlas {
         Ok(atlas.into_response())

@@ -1,4 +1,4 @@
-import { LoadingManager, MeshBasicMaterial, Texture, TextureLoader } from "three";
+import { LinearMipMapNearestFilter, LoadingManager, MeshBasicMaterial, NearestFilter, Texture, TextureLoader } from "three";
 import { AtlasTexture } from "./atlas.js";
 let cache = new Map();
 export class EmoteMaterial extends MeshBasicMaterial {
@@ -7,9 +7,9 @@ export class EmoteMaterial extends MeshBasicMaterial {
     aspectRatio = 1;
     isAnimated = false;
     atlasTex;
-    constructor(channel, emote, apiUrl, onLoad) {
+    constructor(source, emote, apiUrl, onLoad) {
         super({ transparent: true, side: 2 });
-        let hit = cache.get(`channel:${channel},emote:${emote.name}`);
+        let hit = cache.get(`channel:${source},emote:${emote.name}`);
         if (hit) {
             Object.assign(this, hit);
             if (hit.tex instanceof Texture) {
@@ -26,9 +26,18 @@ export class EmoteMaterial extends MeshBasicMaterial {
             }
             return;
         }
-        let urlPrefix = (channel == "globals" || channel == "global") ?
-            `${apiUrl}/emote/globals/${emote.platform}` :
-            `${apiUrl}/emote/${channel.replace(/^\#/, "")}`;
+        let urlPrefix;
+        switch (source) {
+            case "globals":
+            case "global":
+                urlPrefix = `${apiUrl}/emote/globals/${emote.platform}`;
+                break;
+            case "twitch_emote":
+                urlPrefix = `${apiUrl}/emote/twitch`;
+                break;
+            default:
+                urlPrefix = `${apiUrl}/emote/${source.replace(/^\#/, "")}`;
+        }
         fetch(`${urlPrefix}/${emote.name}`).then(async (resp) => {
             let emoteInfo = await resp.json();
             this.isAnimated = emoteInfo.frame_count > 1;
@@ -38,22 +47,27 @@ export class EmoteMaterial extends MeshBasicMaterial {
                 ? `${urlPrefix}/${emote.name}/atlas.webp`
                 : `${urlPrefix}/${emote.name}/0.webp`;
             let textureLoader = new TextureLoader(new LoadingManager());
-            textureLoader
-                .loadAsync(texUrl)
-                .then((tex) => {
-                // this is nearest neighbor (i think?)
-                tex.magFilter = 1003;
+            textureLoader.loadAsync(texUrl).then((tex) => {
+                tex.magFilter = NearestFilter;
+                tex.minFilter = LinearMipMapNearestFilter;
                 this.map = tex;
                 this.aspectRatio = emoteInfo.width / emoteInfo.height;
                 if (this.isAnimated && emoteInfo.atlas_info) {
                     this.atlasTex = new AtlasTexture(emoteInfo.atlas_info.x_size, emoteInfo.atlas_info.y_size, emoteInfo.frame_delays);
                 }
                 tex.colorSpace = "srgb";
-                cache.set(`channel:${channel},emote:${emote.name}`, {
+                cache.set(`channel:${source},emote:${emote.name}`, {
                     animationLength: this.animationLength,
                     aspectRatio: this.aspectRatio,
                     delays: emoteInfo.frame_delays,
-                    tex: this.atlasTex ? { map: this.map, x_size: this.atlasTex.x_size, y_size: this.atlasTex.y_size, delays: emoteInfo.frame_delays } : this.map
+                    tex: this.atlasTex
+                        ? {
+                            map: this.map,
+                            x_size: this.atlasTex.x_size,
+                            y_size: this.atlasTex.y_size,
+                            delays: emoteInfo.frame_delays
+                        }
+                        : this.map
                 });
                 if (onLoad) {
                     onLoad(this);

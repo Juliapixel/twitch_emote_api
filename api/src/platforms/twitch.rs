@@ -3,14 +3,23 @@ use std::{
     time::Duration,
 };
 
-use http::{HeaderName, HeaderValue};
+use dashmap::DashMap;
+use http::{
+    header::ACCEPT,
+    HeaderName, HeaderValue,
+};
 use log::info;
 use reqwest::StatusCode;
 use serde::Deserialize;
+use tinyvec::TinyVec;
 
-use crate::{cache::Cache, platforms::Platform};
+use crate::{
+    cache::Cache,
+    emote::Emote,
+    platforms::{cache::platform_cache_evictor, Platform, EMOTE_CACHE_MAX_AGE},
+};
 
-use super::PlatformError;
+use super::{channel::ChannelEmote, EmotePlatform, PlatformError};
 
 const ID_CACHE_MAX_AGE: Duration = Duration::from_secs(60 * 60 * 8);
 
@@ -21,6 +30,7 @@ pub struct TwitchClient {
     client_secret: Arc<str>,
     token: Arc<str>,
     user_id_cache: Arc<Cache<String, String>>,
+    emote_cache: Arc<Cache<String, Emote>>,
 }
 
 impl std::fmt::Debug for TwitchClient {
@@ -75,30 +85,24 @@ impl TwitchClient {
             }
         };
 
-        let cache = Arc::new(Cache::new(ID_CACHE_MAX_AGE));
+        let user_cache = Arc::new(Cache::new(ID_CACHE_MAX_AGE));
+        let emote_cache = Arc::new(Cache::new(EMOTE_CACHE_MAX_AGE));
 
         // task that clears out the cache every once in a while
-        tokio::spawn({
-            let cache = Arc::downgrade(&cache);
-            async move {
-                let mut interval = tokio::time::interval(Duration::from_secs(60 * 10));
-                loop {
-                    interval.tick().await;
-                    if let Some(cache) = cache.upgrade() {
-                        cache.evict_stale()
-                    } else {
-                        return;
-                    }
-                }
-            }
-        });
+        tokio::spawn(platform_cache_evictor(
+            Arc::downgrade(&user_cache),
+            Duration::from_secs(60 * 15),
+            Arc::downgrade(&emote_cache),
+            Duration::from_secs(60 * 15),
+        ));
 
         Ok(Self {
             client,
             client_id,
             client_secret,
             token: token.into(),
-            user_id_cache: cache,
+            user_id_cache: user_cache,
+            emote_cache,
         })
     }
 
@@ -137,9 +141,84 @@ impl TwitchClient {
         }
     }
 }
+
+impl EmotePlatform for TwitchClient {
+    type InternalEmoteType = Vec<TwitchEmote>;
+
+    /// this is useless p much, emotes will only ever be requested by id
+    async fn get_channel_emotes(
+        &self,
+        _twitch_id: &str,
+    ) -> Result<impl std::ops::Deref<Target = Self::InternalEmoteType>, PlatformError>
+    where
+        for<'a> &'a Self::InternalEmoteType: IntoIterator<Item = super::channel::ChannelEmote>,
+    {
+        Err::<Arc<Self::InternalEmoteType>, PlatformError>(PlatformError::TwitchChannelEmotes)
+    }
+
+    async fn get_emote_by_id(&self, id: &str) -> Result<crate::emote::Emote, PlatformError> {
+        if let Some(hit) = self.emote_cache.get(id) {
+            return Ok(hit.clone());
+        }
+
+        let url = format!(
+            "https://static-cdn.jtvnw.net/emoticons/v2/{}/default/dark/3.0",
+            id
+        );
+
+        let resp = self
+            .client
+            .get(&url)
+            .header(ACCEPT, "image/png, image/webp, image/gif")
+            .send()
+            .await
+            .map_err(|e| e.without_url())?;
+
+        let emote = Emote::try_from_response(resp, id).await?;
+
+        self.emote_cache.insert(id.into(), emote.clone());
+
+        Ok(emote)
+    }
+
+    async fn get_global_emotes(
+        &self,
+    ) -> Result<Arc<dashmap::DashMap<String, ChannelEmote>>, PlatformError> {
+        let globals = self
+            .client
+            .get("https://api.twitch.tv/helix/chat/emotes/global")
+            .bearer_auth(&self.token)
+            .send()
+            .await?
+            .json::<HelixResponse<Vec<TwitchEmote>>>()
+            .await?
+            .data;
+
+        let mut map = DashMap::new();
+        map.extend(globals.into_iter().map(|e| (e.name.clone(), e.into())));
+
+        Ok(Arc::new(map))
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct HelixResponse<T> {
     data: T,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TwitchEmote {
+    pub id: String,
+    pub name: String,
+    pub format: TinyVec<[TwitchEmoteFormat; 2]>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TwitchEmoteFormat {
+    Animated,
+    #[default]
+    Static,
 }
 
 #[derive(Debug, Deserialize)]

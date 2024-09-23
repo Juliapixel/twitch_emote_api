@@ -36,14 +36,14 @@ export class EmoteMaterial extends MeshBasicMaterial {
     private atlasTex?: AtlasTexture;
 
     constructor(
-        channel: string,
+        source: string,
         emote: ChannelEmote,
         apiUrl: string,
         onLoad?: (mat: EmoteMaterial) => void | Promise<void>
     ) {
         super({ transparent: true, side: 2 });
 
-        let hit = cache.get(`channel:${channel},emote:${emote.name}`);
+        let hit = cache.get(`channel:${source},emote:${emote.name}`);
         if (hit) {
             Object.assign(this, hit);
             if (hit.tex instanceof Texture) {
@@ -64,10 +64,18 @@ export class EmoteMaterial extends MeshBasicMaterial {
             return;
         }
 
-        let urlPrefix =
-            channel == "globals" || channel == "global"
-                ? `${apiUrl}/emote/globals/${emote.platform}`
-                : `${apiUrl}/emote/${channel.replace(/^\#/, "")}`;
+        let urlPrefix: string;
+        switch (source) {
+            case "globals":
+            case "global":
+                urlPrefix = `${apiUrl}/emote/globals/${emote.platform}`;
+                break;
+            case "twitch_emote":
+                urlPrefix = `${apiUrl}/emote/twitch`
+                break;
+            default:
+                urlPrefix = `${apiUrl}/emote/${source.replace(/^\#/, "")}`
+        }
 
         fetch(`${urlPrefix}/${emote.name}`).then(async (resp) => {
             let emoteInfo: ChannelEmote = await resp.json();
@@ -99,7 +107,7 @@ export class EmoteMaterial extends MeshBasicMaterial {
 
                 tex.colorSpace = "srgb";
 
-                cache.set(`channel:${channel},emote:${emote.name}`, {
+                cache.set(`channel:${source},emote:${emote.name}`, {
                     animationLength: this.animationLength,
                     aspectRatio: this.aspectRatio,
                     delays: emoteInfo.frame_delays,
