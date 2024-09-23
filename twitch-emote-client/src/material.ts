@@ -13,12 +13,17 @@ interface Atlas {
     map: Texture;
     x_size: number;
     y_size: number;
-    delays: number[]
+    delays: number[];
 }
 
 let cache: Map<
     string,
-    { tex: Atlas | Texture, aspectRatio: number; animationLength: number, delays: number[] }
+    {
+        tex: Atlas | Texture;
+        aspectRatio: number;
+        animationLength: number;
+        delays: number[];
+    }
 > = new Map();
 
 export class EmoteMaterial extends MeshBasicMaterial {
@@ -26,7 +31,7 @@ export class EmoteMaterial extends MeshBasicMaterial {
     private currentFrame: number = 0;
     public aspectRatio: number = 1;
     public isAnimated: boolean = false;
-    private atlasTex?: AtlasTexture
+    private atlasTex?: AtlasTexture;
 
     constructor(
         channel: string,
@@ -48,7 +53,7 @@ export class EmoteMaterial extends MeshBasicMaterial {
                     hit.tex.x_size,
                     hit.tex.y_size,
                     hit.tex.delays
-                )
+                );
                 this.isAnimated = true;
             }
             if (onLoad) {
@@ -57,10 +62,10 @@ export class EmoteMaterial extends MeshBasicMaterial {
             return;
         }
 
-        let urlPrefix = (channel == "globals" || channel == "global") ?
-            `${apiUrl}/emote/globals/${emote.platform}` :
-            `${apiUrl}/emote/${channel.replace(/^\#/, "")}`
-
+        let urlPrefix =
+            channel == "globals" || channel == "global"
+                ? `${apiUrl}/emote/globals/${emote.platform}`
+                : `${apiUrl}/emote/${channel.replace(/^\#/, "")}`;
 
         fetch(`${urlPrefix}/${emote.name}`).then(async (resp) => {
             let emoteInfo: ChannelEmote = await resp.json();
@@ -76,44 +81,46 @@ export class EmoteMaterial extends MeshBasicMaterial {
 
             let textureLoader = new TextureLoader(new LoadingManager());
 
-            textureLoader
-                .loadAsync(texUrl)
-                .then((tex) => {
-                    // this is nearest neighbor (i think?)
-                    tex.magFilter = 1003;
-                    this.map = tex;
-                    this.aspectRatio = emoteInfo.width / emoteInfo.height;
+            textureLoader.loadAsync(texUrl).then((tex) => {
+                // this is nearest neighbor (i think?)
+                tex.magFilter = 1003;
+                this.map = tex;
+                this.aspectRatio = emoteInfo.width / emoteInfo.height;
 
-                    if (this.isAnimated && emoteInfo.atlas_info) {
-                        this.atlasTex = new AtlasTexture(
-                            emoteInfo.atlas_info.x_size,
-                            emoteInfo.atlas_info.y_size,
-                            emoteInfo.frame_delays
-                        )
-                    }
+                if (this.isAnimated && emoteInfo.atlas_info) {
+                    this.atlasTex = new AtlasTexture(
+                        emoteInfo.atlas_info.x_size,
+                        emoteInfo.atlas_info.y_size,
+                        emoteInfo.frame_delays
+                    );
+                }
 
-                    tex.colorSpace = "srgb";
+                tex.colorSpace = "srgb";
 
-                    cache.set(
-                        `channel:${channel},emote:${emote.name}`,
-                        {
-                            animationLength: this.animationLength,
-                            aspectRatio: this.aspectRatio,
-                            delays: emoteInfo.frame_delays,
-                            tex: this.atlasTex ? { map: this.map, x_size: this.atlasTex.x_size, y_size: this.atlasTex.y_size, delays: emoteInfo.frame_delays } : this.map
-                        }
-                    )
-
-                    if (onLoad) {
-                        onLoad(this);
-                    }
+                cache.set(`channel:${channel},emote:${emote.name}`, {
+                    animationLength: this.animationLength,
+                    aspectRatio: this.aspectRatio,
+                    delays: emoteInfo.frame_delays,
+                    tex: this.atlasTex
+                        ? {
+                              map: this.map,
+                              x_size: this.atlasTex.x_size,
+                              y_size: this.atlasTex.y_size,
+                              delays: emoteInfo.frame_delays
+                          }
+                        : this.map
                 });
+
+                if (onLoad) {
+                    onLoad(this);
+                }
+            });
         });
     }
 
     animateTexture(timestamp: number): Vector2[] | undefined {
         if (this.atlasTex !== undefined) {
-            return this.atlasTex.animate(timestamp)
+            return this.atlasTex.animate(timestamp);
         }
         return undefined;
     }

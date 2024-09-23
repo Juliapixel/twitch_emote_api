@@ -24,12 +24,15 @@ export interface ChannelEmote {
     atlas_info?: {
         x_size: number;
         y_size: number;
-    }
+    };
 }
 
-export type CallbackEmoteInfo = ChannelEmote & {source: string};
+export type CallbackEmoteInfo = ChannelEmote & { source: string };
 
-export type EmoteCallback = (emotes: CallbackEmoteInfo[], channelMessage: string) => void;
+export type EmoteCallback = (
+    emotes: CallbackEmoteInfo[],
+    channelMessage: string
+) => void;
 
 export class EmotesClient {
     public config: ClientConfig;
@@ -40,7 +43,7 @@ export class EmotesClient {
 
     constructor(config: Partial<ClientConfig>) {
         this.config = Object.assign(defaultConfig, config);
-        this.config.channels.map((c) => c.toLowerCase())
+        this.config.channels.map((c) => c.toLowerCase());
 
         let tmiClient = new TmiClient({
             channels: window.structuredClone(config.channels)
@@ -81,10 +84,10 @@ export class EmotesClient {
                 let globalEmote = globalEmotes.get(word);
                 if (channelEmote) {
                     (channelEmote as CallbackEmoteInfo).source = channel;
-                    emotes.push(channelEmote as CallbackEmoteInfo)
+                    emotes.push(channelEmote as CallbackEmoteInfo);
                 } else if (globalEmote) {
                     (globalEmote as CallbackEmoteInfo).source = "globals";
-                    emotes.push(globalEmote as CallbackEmoteInfo)
+                    emotes.push(globalEmote as CallbackEmoteInfo);
                 }
             }
         }
@@ -111,11 +114,10 @@ export class EmotesClient {
             ).json();
 
             Object.entries(resp).forEach(([name, emoteInfo]) => {
-                globals.set(name, emoteInfo)
-            })
-
+                globals.set(name, emoteInfo);
+            });
         }
-        this.emoteCache.set("global", globals)
+        this.emoteCache.set("global", globals);
     }
 
     on(event: "emote", callback: EmoteCallback) {

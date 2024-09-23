@@ -14,7 +14,6 @@ export class EmoteObject extends Mesh {
         onLoad?: OnLoadHandler
     ) {
         let geometry = new PlaneGeometry();
-        console.log(geometry.attributes.uv)
         super(geometry);
         this.material = new EmoteMaterial(channel, emoteInfo, apiUrl, (mat) => {
             this.scale.x = mat.aspectRatio;
@@ -24,10 +23,12 @@ export class EmoteObject extends Mesh {
 
     animateTexture(timestamp: number) {
         let uvs = this.material.animateTexture(timestamp);
-        if (!uvs) { return }
+        if (!uvs) {
+            return;
+        }
         let uvAttr = this.geometry.attributes.uv;
         for (let i = 0; i < 4; i++) {
-            uvAttr.setXY(i, uvs[i].x, uvs[i].y)
+            uvAttr.setXY(i, uvs[i].x, uvs[i].y);
         }
         uvAttr.needsUpdate = true;
     }
