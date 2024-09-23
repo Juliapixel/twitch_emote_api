@@ -189,19 +189,3 @@ const spawnEmote = (emotes: CallbackEmoteInfo[], channel: string) => {
         }
     };
 };
-
-// const exampleEmotes: CallbackEmoteInfo[] = [
-//     {id: "", name: "juh", platform: "7tv", source: "julialuxel"},
-//     {id: "", name: "jih", platform: "7tv", source: "julialuxel"},
-//     {id: "", name: "JUH", platform: "7tv", source: "julialuxel"},
-//     {id: "", name: "jah", platform: "7tv", source: "julialuxel"},
-// ];
-
-// if (channels.length === 0) {
-//     setInterval(() => {
-//         spawnEmote(
-//             [exampleEmotes[Math.floor(Math.random() * exampleEmotes.length)]],
-//             "julialuxel"
-//         );
-//     }, 1000);
-// }
