@@ -1,17 +1,8 @@
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import "./style.css";
 
-import {
-    Group,
-    Mesh,
-    PerspectiveCamera,
-    PlaneGeometry,
-    Scene,
-    SpriteMaterial,
-    Vector3,
-    WebGLRenderer
-} from "three";
-import { ChannelEmote, EmotesClient, EmoteMaterial, EmoteObject, CallbackEmoteInfo } from "twitch-emote-client";
+import { Group, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
+import { EmotesClient, EmoteObject, CallbackEmoteInfo } from "twitch-emote-client";
 
 // a default array of twitch channels to join
 let channels: string[] = [];
@@ -28,11 +19,11 @@ if (params.has("channels") || params.has("channel")) {
 
 // performance stats enabled using ?stats=true in the browser URL
 let stats: Stats | undefined;
-let emoteCountPanel: Stats.Panel | undefined
+let emoteCountPanel: Stats.Panel | undefined;
 if (params.get("stats") === "true") {
     stats = new Stats();
     emoteCountPanel = new Stats.Panel("EMOTES", "#f5b942", "#523909");
-    stats.addPanel(emoteCountPanel)
+    stats.addPanel(emoteCountPanel);
     stats.showPanel(0);
     document.body.appendChild(stats.dom);
 }
@@ -108,9 +99,14 @@ function draw() {
 
     renderer.render(scene, camera);
     if (stats && emoteCountPanel && sceneEmoteArray.length > 0) {
-        stats.end()
-        emoteCountPanel.update(sceneEmoteArray.map((group) => group.children.length).reduce((sum, cur) => sum += cur), 50)
-    };
+        stats.end();
+        emoteCountPanel.update(
+            sceneEmoteArray
+                .map((group) => group.children.length)
+                .reduce((sum, cur) => (sum += cur)),
+            50
+        );
+    }
 }
 
 /*
@@ -134,11 +130,7 @@ const spawnEmote = (emotes: CallbackEmoteInfo[], channel: string) => {
     group.data = {
         lifespan: 5000,
         timestamp: Date.now(),
-        velocity: new Vector3(
-            Math.random() - 0.5,
-            Math.random() - 0.5,
-            0
-        )
+        velocity: new Vector3(Math.random() - 0.5, Math.random() - 0.5, 0)
             .normalize()
             .multiply(new Vector3(2, 2, 1))
     };
@@ -149,16 +141,16 @@ const spawnEmote = (emotes: CallbackEmoteInfo[], channel: string) => {
     for (const emote of slicedEmotes) {
         // gotta do this cuz new EmoteObject takes the wrong i for some reason!
         let curI = i;
-        i++
+        i++;
         new EmoteObject(emote.source, client.config.emotesApi, emote, (obj) => {
             let ratio = 0;
             if (slicedEmotes.length !== 1) {
                 ratio = curI / slicedEmotes.length - 1;
             }
 
-            obj.position.x = (Math.random() * 4 - 2) * ratio ;
-            obj.position.y = (Math.random() * 4 - 2) * ratio ;
-            obj.position.z = (Math.random() * 4 - 2) * ratio ;
+            obj.position.x = (Math.random() * 4 - 2) * ratio;
+            obj.position.y = (Math.random() * 4 - 2) * ratio;
+            obj.position.z = (Math.random() * 4 - 2) * ratio;
 
             group.add(obj);
             processedEmotes++;
@@ -170,7 +162,6 @@ const spawnEmote = (emotes: CallbackEmoteInfo[], channel: string) => {
                 sceneEmoteArray.push(group);
             }
         });
-
     }
 
     group.update = () => {
