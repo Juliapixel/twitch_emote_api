@@ -107,7 +107,7 @@ function draw() {
     }
 
     renderer.render(scene, camera);
-    if (stats && emoteCountPanel) {
+    if (stats && emoteCountPanel && sceneEmoteArray.length > 0) {
         stats.end()
         emoteCountPanel.update(sceneEmoteArray.map((group) => group.children.length).reduce((sum, cur) => sum += cur), 50)
     };
@@ -195,18 +195,18 @@ const spawnEmote = (emotes: CallbackEmoteInfo[], channel: string) => {
     };
 };
 
-const exampleEmotes: CallbackEmoteInfo[] = [
-    {id: "", name: "juh", platform: "7tv", source: "julialuxel"},
-    {id: "", name: "jih", platform: "7tv", source: "julialuxel"},
-    {id: "", name: "JUH", platform: "7tv", source: "julialuxel"},
-    {id: "", name: "jah", platform: "7tv", source: "julialuxel"},
-];
+// const exampleEmotes: CallbackEmoteInfo[] = [
+//     {id: "", name: "juh", platform: "7tv", source: "julialuxel"},
+//     {id: "", name: "jih", platform: "7tv", source: "julialuxel"},
+//     {id: "", name: "JUH", platform: "7tv", source: "julialuxel"},
+//     {id: "", name: "jah", platform: "7tv", source: "julialuxel"},
+// ];
 
-if (channels.length === 0) {
-    setInterval(() => {
-        spawnEmote(
-            [exampleEmotes[Math.floor(Math.random() * exampleEmotes.length)]],
-            "julialuxel"
-        );
-    }, 1000);
-}
+// if (channels.length === 0) {
+//     setInterval(() => {
+//         spawnEmote(
+//             [exampleEmotes[Math.floor(Math.random() * exampleEmotes.length)]],
+//             "julialuxel"
+//         );
+//     }, 1000);
+// }

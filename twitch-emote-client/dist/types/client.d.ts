@@ -7,7 +7,16 @@ export interface ClientConfig {
 export interface ChannelEmote {
     platform: string;
     id: string;
+    width: number;
+    height: number;
     name: string;
+    animated: boolean;
+    frame_count: number;
+    frame_delays: number[];
+    atlas_info?: {
+        x_size: number;
+        y_size: number;
+    };
 }
 export type CallbackEmoteInfo = ChannelEmote & {
     source: string;

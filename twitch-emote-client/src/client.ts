@@ -15,7 +15,16 @@ const defaultConfig: ClientConfig = {
 export interface ChannelEmote {
     platform: string;
     id: string;
+    width: number;
+    height: number;
     name: string;
+    animated: boolean;
+    frame_count: number;
+    frame_delays: number[];
+    atlas_info?: {
+        x_size: number;
+        y_size: number;
+    }
 }
 
 export type CallbackEmoteInfo = ChannelEmote & {source: string};
@@ -88,7 +97,7 @@ export class EmotesClient {
     }
 
     async updateChannelEmotes(channel: string): Promise<void> {
-        let resp: Object = await (
+        let resp: Record<string, ChannelEmote> = await (
             await fetch(this.config.emotesApi + "/user/" + channel)
         ).json();
         this.emoteCache.set(channel, new Map(Object.entries(resp)));
@@ -97,7 +106,7 @@ export class EmotesClient {
     async updateGlobalEmotes() {
         let globals: Map<string, ChannelEmote> = new Map();
         for (const platform of ["7tv", "bttv", "ffz"]) {
-            let resp: Object = await (
+            let resp: Record<string, ChannelEmote> = await (
                 await fetch(this.config.emotesApi + "/emote/globals/" + platform)
             ).json();
 

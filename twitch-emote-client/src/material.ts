@@ -3,33 +3,30 @@ import {
     Material,
     MeshBasicMaterial,
     Texture,
-    TextureLoader
+    TextureLoader,
+    Vector2
 } from "three";
 import { ChannelEmote } from "./client.js";
+import { AtlasTexture } from "./atlas.js";
 
-interface AnimationFrame {
-    texture: Texture;
-    delay: number;
-}
-
-interface EmoteInfo {
-    platform: string;
-    id: string;
-    name: string;
-    frame_count: number;
-    frame_delays: number[];
+interface Atlas {
+    map: Texture;
+    x_size: number;
+    y_size: number;
+    delays: number[]
 }
 
 let cache: Map<
     string,
-    { frames: AnimationFrame[]; aspectRatio: number; animationLength: number }
+    { tex: Atlas | Texture, aspectRatio: number; animationLength: number, delays: number[] }
 > = new Map();
 
 export class EmoteMaterial extends MeshBasicMaterial {
-    private frames: AnimationFrame[] = [];
     private animationLength: number = 0;
     private currentFrame: number = 0;
     public aspectRatio: number = 1;
+    public isAnimated: boolean = false;
+    private atlasTex?: AtlasTexture
 
     constructor(
         channel: string,
@@ -42,7 +39,18 @@ export class EmoteMaterial extends MeshBasicMaterial {
         let hit = cache.get(`channel:${channel},emote:${emote.name}`);
         if (hit) {
             Object.assign(this, hit);
-            this.map = this.frames[0].texture;
+            if (hit.tex instanceof Texture) {
+                this.map = hit.tex;
+                this.isAnimated = false;
+            } else {
+                this.map = hit.tex.map;
+                this.atlasTex = new AtlasTexture(
+                    hit.tex.x_size,
+                    hit.tex.y_size,
+                    hit.tex.delays
+                )
+                this.isAnimated = true;
+            }
             if (onLoad) {
                 onLoad(this);
             }
@@ -55,69 +63,58 @@ export class EmoteMaterial extends MeshBasicMaterial {
 
 
         fetch(`${urlPrefix}/${emote.name}`).then(async (resp) => {
-            let emoteInfo: EmoteInfo = await resp.json();
+            let emoteInfo: ChannelEmote = await resp.json();
+            this.isAnimated = emoteInfo.frame_count > 1;
             this.animationLength = emoteInfo.frame_delays.reduce(
                 (sum, delay) => (sum += delay)
             );
             this.currentFrame = 0;
-            this.frames = [];
 
-            let processedFrameCount = 0;
-            for (let i = 0; i < emoteInfo.frame_count; i++) {
-                let textureLoader = new TextureLoader(new LoadingManager());
+            let texUrl = this.isAnimated
+                ? `${urlPrefix}/${emote.name}/atlas.webp`
+                : `${urlPrefix}/${emote.name}/0.webp`;
 
-                textureLoader
-                    .loadAsync(`${urlPrefix}/${emote.name}/${i}.webp`)
-                    .then((tex) => {
-                        if (i === 0) {
-                            this.map = tex;
-                            this.aspectRatio =
-                                tex.source.data.naturalWidth /
-                                tex.source.data.naturalHeight;
+            let textureLoader = new TextureLoader(new LoadingManager());
+
+            textureLoader
+                .loadAsync(texUrl)
+                .then((tex) => {
+                    // this is nearest neighbor (i think?)
+                    tex.magFilter = 1003;
+                    this.map = tex;
+                    this.aspectRatio = emoteInfo.width / emoteInfo.height;
+
+                    if (this.isAnimated && emoteInfo.atlas_info) {
+                        this.atlasTex = new AtlasTexture(
+                            emoteInfo.atlas_info.x_size,
+                            emoteInfo.atlas_info.y_size,
+                            emoteInfo.frame_delays
+                        )
+                    }
+
+                    tex.colorSpace = "srgb";
+
+                    cache.set(
+                        `channel:${channel},emote:${emote.name}`,
+                        {
+                            animationLength: this.animationLength,
+                            aspectRatio: this.aspectRatio,
+                            delays: emoteInfo.frame_delays,
+                            tex: this.atlasTex ? { map: this.map, x_size: this.atlasTex.x_size, y_size: this.atlasTex.y_size, delays: emoteInfo.frame_delays } : this.map
                         }
+                    )
 
-                        tex.colorSpace = "srgb";
-
-                        this.frames[i] = {
-                            texture: tex,
-                            delay: emoteInfo.frame_delays[i]
-                        };
-
-                        processedFrameCount += 1;
-                        if (processedFrameCount === emoteInfo.frame_count) {
-                            cache.set(`channel:${channel},emote:${emote.name}`, {
-                                frames: this.frames,
-                                aspectRatio: this.aspectRatio,
-                                animationLength: this.animationLength
-                            });
-                            if (onLoad) {
-                                onLoad(this);
-                            }
-                        }
-                    });
-            }
+                    if (onLoad) {
+                        onLoad(this);
+                    }
+                });
         });
     }
 
-    dispose(): void {
-        for (const tex of this.frames) {
-            tex.texture.dispose();
+    animateTexture(timestamp: number): Vector2[] | undefined {
+        if (this.atlasTex !== undefined) {
+            return this.atlasTex.animate(timestamp)
         }
-        super.dispose();
-    }
-
-    animateTexture(timestamp: number) {
-        let currentDelay = timestamp % this.animationLength;
-        let delaySum = 0;
-
-        let i = 0;
-        for (const frame of this.frames) {
-            if (currentDelay > delaySum) {
-                this.map = frame.texture;
-                this.currentFrame = i;
-            }
-            delaySum += frame.delay;
-            i++;
-        }
+        return undefined;
     }
 }
