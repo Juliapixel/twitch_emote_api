@@ -1,9 +1,9 @@
 import {
     LinearMipMapNearestFilter,
     LoadingManager,
-    Material,
     MeshBasicMaterial,
     NearestFilter,
+    SRGBColorSpace,
     Texture,
     TextureLoader,
     Vector2
@@ -41,7 +41,7 @@ export class EmoteMaterial extends MeshBasicMaterial {
         apiUrl: string,
         onLoad?: (mat: EmoteMaterial) => void | Promise<void>
     ) {
-        super({ transparent: true, side: 2 });
+        super({ transparent: true, side: 2, alphaTest: 0.5 });
 
         let hit = cache.get(`channel:${source},emote:${emote.name}`);
         if (hit) {
@@ -71,10 +71,10 @@ export class EmoteMaterial extends MeshBasicMaterial {
                 urlPrefix = `${apiUrl}/emote/globals/${emote.platform}`;
                 break;
             case "twitch_emote":
-                urlPrefix = `${apiUrl}/emote/twitch`
+                urlPrefix = `${apiUrl}/emote/twitch`;
                 break;
             default:
-                urlPrefix = `${apiUrl}/emote/${source.replace(/^\#/, "")}`
+                urlPrefix = `${apiUrl}/emote/${source.replace(/^\#/, "")}`;
         }
 
         fetch(`${urlPrefix}/${emote.name}`).then(async (resp) => {
@@ -105,7 +105,7 @@ export class EmoteMaterial extends MeshBasicMaterial {
                     );
                 }
 
-                tex.colorSpace = "srgb";
+                tex.colorSpace = SRGBColorSpace;
 
                 cache.set(`channel:${source},emote:${emote.name}`, {
                     animationLength: this.animationLength,

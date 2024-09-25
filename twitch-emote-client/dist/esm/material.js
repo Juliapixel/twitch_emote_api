@@ -1,4 +1,4 @@
-import { LinearMipMapNearestFilter, LoadingManager, MeshBasicMaterial, NearestFilter, Texture, TextureLoader } from "three";
+import { LinearMipMapNearestFilter, LoadingManager, MeshBasicMaterial, NearestFilter, SRGBColorSpace, Texture, TextureLoader } from "three";
 import { AtlasTexture } from "./atlas.js";
 let cache = new Map();
 export class EmoteMaterial extends MeshBasicMaterial {
@@ -8,7 +8,7 @@ export class EmoteMaterial extends MeshBasicMaterial {
     isAnimated = false;
     atlasTex;
     constructor(source, emote, apiUrl, onLoad) {
-        super({ transparent: true, side: 2 });
+        super({ transparent: true, side: 2, alphaTest: 0.5 });
         let hit = cache.get(`channel:${source},emote:${emote.name}`);
         if (hit) {
             Object.assign(this, hit);
@@ -55,7 +55,7 @@ export class EmoteMaterial extends MeshBasicMaterial {
                 if (this.isAnimated && emoteInfo.atlas_info) {
                     this.atlasTex = new AtlasTexture(emoteInfo.atlas_info.x_size, emoteInfo.atlas_info.y_size, emoteInfo.frame_delays);
                 }
-                tex.colorSpace = "srgb";
+                tex.colorSpace = SRGBColorSpace;
                 cache.set(`channel:${source},emote:${emote.name}`, {
                     animationLength: this.animationLength,
                     aspectRatio: this.aspectRatio,

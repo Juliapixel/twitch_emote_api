@@ -79,7 +79,11 @@ export class EmotesClient {
         let globalEmotes = this.emoteCache.get("global");
         let emotes: CallbackEmoteInfo[] = [];
         for (const twitchEmoteId of Object.entries(state.emotes ?? {})) {
-            let info: ChannelEmote = await (await fetch(this.config.emotesApi + `/emote/twitch/${twitchEmoteId[0]}`)).json();
+            let info: ChannelEmote = await (
+                await fetch(
+                    this.config.emotesApi + `/emote/twitch/${twitchEmoteId[0]}`
+                )
+            ).json();
             (info as CallbackEmoteInfo).source = "twitch_emote";
             for (let i = 0; i < twitchEmoteId[1].length; i++) {
                 emotes.push(info as CallbackEmoteInfo);
