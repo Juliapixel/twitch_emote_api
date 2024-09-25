@@ -51,6 +51,10 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
             "/emote/globals/:platform/:name/:frame",
             get(platform_global_emote_frame),
         )
+        .route(
+            "/emote/globals/:platform/:name/atlas.webp",
+            get(platform_global_emote_atlas),
+        )
         .layer(tower_http::cors::CorsLayer::permissive())
         .layer(tower_http::compression::CompressionLayer::new().no_zstd())
         .with_state(
@@ -262,5 +266,22 @@ async fn platform_global_emote_frame(
             None => Err(PlatformError::EmoteNotFound),
         },
         Err(_) => Err(PlatformError::EmoteNotFound),
+    }
+}
+
+async fn platform_global_emote_atlas(
+    Path((platform, emote)): Path<(Platform, String)>,
+    State(manager): State<EmoteManager>,
+) -> Result<Response<Body>, PlatformError> {
+    match manager.get_global_emotes(platform).await?.get(&emote) {
+        Some(info) => {
+            let emote = manager.get_emote(info.platform, &info.id).await?;
+
+            match emote.atlas {
+                Some(atlas) => Ok(atlas.clone().into_response()),
+                None => Ok((StatusCode::NOT_FOUND, ()).into_response()),
+            }
+        }
+        None => Err(PlatformError::EmoteNotFound),
     }
 }
