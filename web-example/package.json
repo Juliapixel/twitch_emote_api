@@ -13,12 +13,13 @@
   "devDependencies": {
     "@types/three": "^0.168.0",
     "@types/tmi.js": "^1.8.6",
+    "path": "^0.12.7",
     "prettier": "^3.3.3",
     "vite": "^5.4.3"
   },
   "dependencies": {
-    "twitch-emote-client": "file:../twitch-emote-client",
-    "three": "^0.168.0",
-    "tmi.js": "^1.8.5"
+    "three": "^0.169.0",
+    "tmi.js": "^1.8.5",
+    "twitch-emote-client": "file:../twitch-emote-client"
   }
 }

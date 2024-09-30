@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       three:
-        specifier: ^0.163.0
-        version: 0.163.0
+        specifier: ^0.169.0
+        version: 0.169.0
       tmi.js:
         specifier: ^1.8.5
         version: 1.8.5
@@ -24,6 +24,9 @@ importers:
       '@types/tmi.js':
         specifier: ^1.8.6
         version: 1.8.6
+      path:
+        specifier: ^0.12.7
+        version: 0.12.7
       prettier:
         specifier: ^3.3.3
         version: 3.3.3
@@ -285,6 +288,9 @@ packages:
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
+  inherits@2.0.3:
+    resolution: {integrity: sha512-x00IRNXNy63jwGkJmzPigoySHbaqpNuzKbBOmzK+g2OdZpQ9w+sxCN+VSB3ja7IAge2OP2qpfxTjeNcyjmW1uw==}
+
   meshoptimizer@0.18.1:
     resolution: {integrity: sha512-ZhoIoL7TNV4s5B6+rx5mC//fw8/POGyNxS/DZyCJeiZ12ScLfVwRE/GfsxwiTkMYYD5DmK2/JXnEVXqL4rF+Sw==}
 
@@ -302,6 +308,9 @@ packages:
       encoding:
         optional: true
 
+  path@0.12.7:
+    resolution: {integrity: sha512-aXXC6s+1w7otVF9UletFkFcDsJeO7lSZBPUQhtb5O0xJe8LtYhj/GxldoL09bBj9+ZmE2hNoHqQSFMN5fikh4Q==}
+
   picocolors@1.1.0:
     resolution: {integrity: sha512-TQ92mBOW0l3LeMeyLV6mzy/kWr8lkd/hp3mTg7wYK7zJhuBStmGMBG0BdeDZS/dZx1IukaX6Bk11zcln25o1Aw==}
 
@@ -314,6 +323,10 @@ packages:
     engines: {node: '>=14'}
     hasBin: true
 
+  process@0.11.10:
+    resolution: {integrity: sha512-cdGef/drWFoydD1JsMzuFf8100nZl+GT+yacc2bEced5f9Rjk4z+WtFUTBu9PhOi9j/jfmBPu0mMEY4wIdAF8A==}
+    engines: {node: '>= 0.6.0'}
+
   rollup@4.21.2:
     resolution: {integrity: sha512-e3TapAgYf9xjdLvKQCkQTnbTKd4a6jwlpQSJJFokHGaX2IVjoEqkIIhiQfqsi0cdwlOD+tQGuOd5AJkc5RngBw==}
     engines: {node: '>=18.0.0', npm: '>=8.0.0'}
@@ -323,11 +336,11 @@ packages:
     resolution: {integrity: sha512-itJW8lvSA0TXEphiRoawsCksnlf8SyvmFzIhltqAHluXd88pkCd+cXJVHTDwdCr0IzwptSm035IHQktUu1QUMg==}
     engines: {node: '>=0.10.0'}
 
-  three@0.163.0:
-    resolution: {integrity: sha512-HlMgCb2TF/dTLRtknBnjUTsR8FsDqBY43itYop2+Zg822I+Kd0Ua2vs8CvfBVefXkBdNDrLMoRTGCIIpfCuDew==}
-
   three@0.168.0:
     resolution: {integrity: sha512-6m6jXtDwMJEK/GGMbAOTSAmxNdzKvvBzgd7q8bE/7Tr6m7PaBh5kKLrN7faWtlglXbzj7sVba48Idwx+NRsZXw==}
+
+  three@0.169.0:
+    resolution: {integrity: sha512-Ed906MA3dR4TS5riErd4QBsRGPcx+HBDX2O5yYE5GqJeFQTPU+M56Va/f/Oph9X7uZo3W3o4l2ZhBZ6f6qUv0w==}
 
   tmi.js@1.8.5:
     resolution: {integrity: sha512-A9qrydfe1e0VWM9MViVhhxVgvLpnk7pFShVUWePsSTtoi+A1X+Zjdoa7OJd7/YsgHXGj3GkNEvnWop/1WwZuew==}
@@ -338,6 +351,9 @@ packages:
 
   twitch-emote-client@file:../twitch-emote-client:
     resolution: {directory: ../twitch-emote-client, type: directory}
+
+  util@0.10.4:
+    resolution: {integrity: sha512-0Pm9hTQ3se5ll1XihRic3FDIku70C+iHUdT/W926rSgHV5QgXsYbKZN8MSC3tJtSkhuROzvsQjAaFENRXr+19A==}
 
   vite@5.4.3:
     resolution: {integrity: sha512-IH+nl64eq9lJjFqU+/yrRnrHPVTlgy42/+IzbOdaFDVlyLgI/wDlf+FCobXLX1cT0X5+7LMyH1mIy2xJdLfo8Q==}
@@ -559,6 +575,8 @@ snapshots:
   fsevents@2.3.3:
     optional: true
 
+  inherits@2.0.3: {}
+
   meshoptimizer@0.18.1: {}
 
   nanoid@3.3.7: {}
@@ -566,6 +584,11 @@ snapshots:
   node-fetch@2.7.0:
     dependencies:
       whatwg-url: 5.0.0
+
+  path@0.12.7:
+    dependencies:
+      process: 0.11.10
+      util: 0.10.4
 
   picocolors@1.1.0: {}
 
@@ -576,6 +599,8 @@ snapshots:
       source-map-js: 1.2.0
 
   prettier@3.3.3: {}
+
+  process@0.11.10: {}
 
   rollup@4.21.2:
     dependencies:
@@ -601,9 +626,9 @@ snapshots:
 
   source-map-js@1.2.0: {}
 
-  three@0.163.0: {}
-
   three@0.168.0: {}
+
+  three@0.169.0: {}
 
   tmi.js@1.8.5:
     dependencies:
@@ -624,6 +649,10 @@ snapshots:
       - bufferutil
       - encoding
       - utf-8-validate
+
+  util@0.10.4:
+    dependencies:
+      inherits: 2.0.3
 
   vite@5.4.3:
     dependencies:
