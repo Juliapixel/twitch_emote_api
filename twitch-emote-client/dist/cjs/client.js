@@ -31,32 +31,39 @@ export class EmotesClient {
         var _a;
         let channelEmotes = this.emoteCache.get(channel.substring(1));
         let globalEmotes = this.emoteCache.get("global");
+        // second item is the freakin start index, for sorting twitch emotes
         let emotes = [];
-        for (const twitchEmoteId of Object.entries((_a = state.emotes) !== null && _a !== void 0 ? _a : {})) {
-            let info = await (await fetch(this.config.emotesApi + `/emote/twitch/${twitchEmoteId[0]}`)).json();
+        for (const [twitchEmoteId, positions] of Object.entries((_a = state.emotes) !== null && _a !== void 0 ? _a : {})) {
+            let info = await (await fetch(this.config.emotesApi + `/emote/twitch/${twitchEmoteId}`)).json();
             info.source = "twitch_emote";
-            for (let i = 0; i < twitchEmoteId[1].length; i++) {
-                emotes.push(info);
+            for (const position of positions) {
+                emotes.push([info, parseInt(position.split("-")[0], 10)]);
             }
         }
         if (channelEmotes !== undefined && globalEmotes !== undefined) {
+            let idx = 0;
             for (const word of message.split(" ")) {
+                if (idx !== 0) {
+                    idx += 1;
+                }
                 let channelEmote = channelEmotes.get(word);
                 let globalEmote = globalEmotes.get(word);
                 if (channelEmote) {
                     channelEmote.source = channel;
-                    emotes.push(channelEmote);
+                    emotes.push([channelEmote, idx]);
                 }
                 else if (globalEmote) {
                     globalEmote.source = "globals";
-                    emotes.push(globalEmote);
+                    emotes.push([globalEmote, idx]);
                 }
+                idx += word.length;
             }
         }
         if (emotes.length > 0) {
+            emotes.sort((a, b) => a[1] - b[1]);
             const handlers = this.listeners.get("emote");
             for (const handler of handlers ? handlers : []) {
-                handler(emotes, channel.substring(1));
+                handler(emotes.map((i) => i[0]), channel.substring(1));
             }
         }
     }
