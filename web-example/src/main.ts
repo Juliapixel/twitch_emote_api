@@ -108,7 +108,7 @@ function draw() {
                 50
             );
         } else {
-            emoteCountPanel.update(0, 50)
+            emoteCountPanel.update(0, 50);
         }
     }
 }
