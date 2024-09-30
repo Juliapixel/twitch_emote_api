@@ -37,7 +37,10 @@ export class EmotesClient {
             let info = await (await fetch(this.config.emotesApi + `/emote/twitch/${twitchEmoteId}`)).json();
             info.source = "twitch_emote";
             for (const position of positions) {
-                emotes.push([info, parseInt(position.split("-")[0], 10)]);
+                emotes.push([
+                    info,
+                    parseInt(position.split("-")[0], 10)
+                ]);
             }
         }
         if (channelEmotes !== undefined && globalEmotes !== undefined) {
