@@ -28,6 +28,8 @@ let cache: Map<
     }
 > = new Map();
 
+const loadingManager = new LoadingManager();
+
 export class EmoteMaterial extends MeshBasicMaterial {
     private animationLength: number = 0;
     private currentFrame: number = 0;
@@ -89,7 +91,7 @@ export class EmoteMaterial extends MeshBasicMaterial {
                 ? `${urlPrefix}/${emote.name}/atlas.webp`
                 : `${urlPrefix}/${emote.name}/0.webp`;
 
-            let textureLoader = new TextureLoader(new LoadingManager());
+            let textureLoader = new TextureLoader(loadingManager);
 
             textureLoader.loadAsync(texUrl).then((tex) => {
                 tex.magFilter = NearestFilter;

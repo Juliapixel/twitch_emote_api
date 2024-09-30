@@ -1,6 +1,7 @@
 import { LinearMipMapNearestFilter, LoadingManager, MeshBasicMaterial, NearestFilter, SRGBColorSpace, Texture, TextureLoader } from "three";
 import { AtlasTexture } from "./atlas.js";
 let cache = new Map();
+const loadingManager = new LoadingManager();
 export class EmoteMaterial extends MeshBasicMaterial {
     animationLength = 0;
     currentFrame = 0;
@@ -46,7 +47,7 @@ export class EmoteMaterial extends MeshBasicMaterial {
             let texUrl = this.isAnimated
                 ? `${urlPrefix}/${emote.name}/atlas.webp`
                 : `${urlPrefix}/${emote.name}/0.webp`;
-            let textureLoader = new TextureLoader(new LoadingManager());
+            let textureLoader = new TextureLoader(loadingManager);
             textureLoader.loadAsync(texUrl).then((tex) => {
                 tex.magFilter = NearestFilter;
                 tex.minFilter = LinearMipMapNearestFilter;
