@@ -31,7 +31,7 @@ export type CallbackEmoteInfo = ChannelEmote & { source: string };
 
 export type EmoteCallback = (
     emotes: CallbackEmoteInfo[],
-    channelMessage: string
+    source: string
 ) => void;
 
 export class EmotesClient {
@@ -79,22 +79,25 @@ export class EmotesClient {
         let globalEmotes = this.emoteCache.get("global");
         // second item is the freakin start index, for sorting twitch emotes
         let emotes: [CallbackEmoteInfo, number][] = [];
-        for (const [twitchEmoteId, positions] of Object.entries(state.emotes ?? {})) {
+        for (const [twitchEmoteId, positions] of Object.entries(
+            state.emotes ?? {}
+        )) {
             let info: ChannelEmote = await (
-                await fetch(
-                    this.config.emotesApi + `/emote/twitch/${twitchEmoteId}`
-                )
+                await fetch(this.config.emotesApi + `/emote/twitch/${twitchEmoteId}`)
             ).json();
             (info as CallbackEmoteInfo).source = "twitch_emote";
             for (const position of positions) {
-                emotes.push([info as CallbackEmoteInfo, parseInt(position.split("-")[0], 10)]);
+                emotes.push([
+                    info as CallbackEmoteInfo,
+                    parseInt(position.split("-")[0], 10)
+                ]);
             }
         }
         if (channelEmotes !== undefined && globalEmotes !== undefined) {
             let idx = 0;
             for (const word of message.split(" ")) {
                 if (idx !== 0) {
-                    idx += 1
+                    idx += 1;
                 }
                 let channelEmote = channelEmotes.get(word);
                 let globalEmote = globalEmotes.get(word);
@@ -109,10 +112,13 @@ export class EmotesClient {
             }
         }
         if (emotes.length > 0) {
-            emotes.sort((a, b) => a[1] - b[1])
+            emotes.sort((a, b) => a[1] - b[1]);
             const handlers = this.listeners.get("emote");
             for (const handler of handlers ? handlers : []) {
-                handler(emotes.map((i) => i[0]), channel.substring(1));
+                handler(
+                    emotes.map((i) => i[0]),
+                    channel.substring(1)
+                );
             }
         }
     }
