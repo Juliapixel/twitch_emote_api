@@ -9,3 +9,5 @@ client.on("emote", (emotes, source) => {
     // DO STUFF HERE WOAH
 });
 ```
+
+also some basic usage [here](https://github.com/Juliapixel/twitch_emote_api/blob/main/web-example/src/main.ts)

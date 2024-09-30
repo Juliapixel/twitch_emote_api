@@ -1,7 +1,11 @@
 {
   "name": "twitch-emote-client",
   "version": "0.1.1",
-  "description": "",
+  "description": "a twitch and third-party emote client",
+  "repository": {
+    "directory": "twitch-emote-client",
+    "url": "https://github.com/Juliapixel/twitch_emote_api"
+  },
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
