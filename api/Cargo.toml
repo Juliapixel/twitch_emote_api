@@ -1,5 +1,5 @@
 [package]
-name = "api"
+name = "twitch_emote_api"
 version = "0.1.0"
 edition = "2021"
 
@@ -14,25 +14,25 @@ config = "0.14"
 dashmap = { version = "6.1", features = ["serde"] }
 dotenvy = { version = "0.15", features = ["clap"] }
 either = { version = "1.13", features = ["serde"] }
-env_logger = "0.11"
 futures = "0.3"
 hashbrown = { version = "0.14", features = ["serde"] }
 http = "1.1"
 image = "0.25"
 jemallocator = "0.5"
-log = "0.4"
 mime = "0.3"
 parking_lot = "0.12"
 regex = "1.10"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "http2", "gzip", "brotli", "deflate", "json"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
-sled = "0.34"
+# sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
 thiserror = "1.0"
 tinyvec = { version = "1.8", features = ["serde", "std"] }
 tokio = { version = "1.40", features = ["full"] }
 tower = { version = "0.5", features = ["tokio"] }
-tower-http = { version = "0.5", features = ["compression-br", "compression-gzip", "cors"] }
+tower-http = { version = "0.5", features = ["compression-br", "compression-gzip", "cors", "trace"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
 url = "2.5"
 
 # image-webp is bugged on current releases erm!

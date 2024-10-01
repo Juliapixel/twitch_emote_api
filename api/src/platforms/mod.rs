@@ -4,8 +4,8 @@ use axum::response::IntoResponse;
 use channel::ChannelEmote;
 use dashmap::DashMap;
 use http::StatusCode;
-use log::error;
 use serde::{Deserialize, Serialize};
+use tracing::warn;
 
 use crate::{
     cache::Cache,
@@ -163,15 +163,15 @@ impl EmoteManager {
 
                 match seventv_resp {
                     Ok(resp) => emotes.extend(resp.into_iter().map(|e| (e.name.clone(), e))),
-                    Err(e) => error!("{e} from 7tv"),
+                    Err(e) => warn!("{e} from 7tv"),
                 }
                 match bttv_resp {
                     Ok(resp) => emotes.extend(resp.into_iter().map(|e| (e.name.clone(), e))),
-                    Err(e) => error!("{e} from bttv"),
+                    Err(e) => warn!("{e} from bttv"),
                 }
                 match ffz_resp {
                     Ok(resp) => emotes.extend(resp.into_iter().map(|e| (e.name.clone(), e))),
-                    Err(e) => error!("{e} from ffz"),
+                    Err(e) => warn!("{e} from ffz"),
                 }
 
                 let emotes: Arc<DashMap<String, ChannelEmote>> = emotes.into();

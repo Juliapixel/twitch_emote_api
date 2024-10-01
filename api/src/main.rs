@@ -1,17 +1,14 @@
-use std::sync::LazyLock;
+use std::{os::unix::ffi::OsStrExt, sync::LazyLock, time::Duration};
 
-use api::{
+use twitch_emote_api::{
     cli::ARGS,
     emote::EmoteInfo,
     platforms::{EmoteManager, Platform, PlatformError},
 };
 use axum::{
-    body::Body,
-    extract::{Path, State},
-    response::{IntoResponse, Response},
-    routing::get,
-    Json,
+    body::Body, extract::{Path, Extension}, response::{IntoResponse, Response}, routing::get, Extension as ExtensionLayer, Json
 };
+use config::builder::DefaultState;
 use futures::FutureExt;
 use http::{header::CACHE_CONTROL, HeaderValue, StatusCode};
 use tokio::signal::unix::SignalKind;
@@ -22,17 +19,47 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn core::error::Error>> {
-    env_logger::init();
+    tracing_subscriber::FmtSubscriber::builder()
+        .with_level(true)
+        .with_max_level(tracing::Level::INFO)
+        .init();
 
-    // let config_path = current_dir().unwrap().with_file_name("config.yml");
+    // SOON
+    /*
+    let config_path = std::env::current_dir()
+        .unwrap()
+        .with_file_name("config.yml");
 
-    // let config = config::ConfigBuilder::<DefaultState>::default()
-    //     .add_source(config::File::new(
-    //         &config_path.to_string_lossy(),
-    //         config::FileFormat::Yaml,
-    //     ))
-    //     .build()?;
-    // let db_path = config.get::<std::path::PathBuf>("db_path")?;
+    let config = config::ConfigBuilder::<DefaultState>::default()
+        .add_source(config::File::new(
+            &config_path.to_string_lossy(),
+            config::FileFormat::Yaml,
+        ))
+        .build()?;
+
+    let db_path = config.get::<std::path::PathBuf>("db_path")?;
+
+    // touch.....
+    if !db_path.exists() {
+        std::fs::OpenOptions::new().create(true).truncate(false).write(true).open(&db_path)?;
+    }
+
+    let pool = sqlx::SqlitePool::connect(
+        format!(
+            "sqlite://{}",
+            String::from_utf8_lossy(
+                db_path
+                    .canonicalize()
+                    .expect("failed to canonicalize db path")
+                    .as_os_str()
+                    .as_bytes()
+            )
+        )
+        .as_str(),
+    )
+    .await
+    .expect("failed to open sqlite pool");
+    */
 
     let app = axum::Router::new()
         .route("/user/:username", get(emotes_by_username))
@@ -57,10 +84,29 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
         )
         .layer(tower_http::cors::CorsLayer::permissive())
         .layer(tower_http::compression::CompressionLayer::new().no_zstd())
-        .with_state(
-            EmoteManager::new(ARGS.client_id.as_str(), ARGS.client_secret.as_str())
-                .await
-                .unwrap(),
+        .layer(
+            tower_http::trace::TraceLayer::new_for_http()
+                .make_span_with(|req: &http::Request<Body>| {
+                    tracing::info_span!(
+                        "http-request",
+                        path = req.uri().path(),
+                        latency_millis = tracing::field::Empty,
+                        status_code = tracing::field::Empty,
+                    )
+                })
+                .on_response(|response: &Response<Body>, latency: Duration, span: &tracing::Span| {
+                    span.record("latency_millis", latency.as_secs_f32() * 1000.0);
+                    span.record("status_code", response.status().as_u16());
+                    tracing::info!("request finished")
+                })
+        )
+        // .layer(ExtensionLayer(pool))
+        .layer(
+            ExtensionLayer(
+                EmoteManager::new(ARGS.client_id.as_str(), ARGS.client_secret.as_str())
+                    .await
+                    .unwrap()
+            )
         );
 
     let socket =
@@ -87,7 +133,7 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
 
 async fn emotes_by_username(
     Path(username): Path<String>,
-    State(manager): State<EmoteManager>,
+    Extension(manager): Extension<EmoteManager>,
 ) -> Response {
     manager
         .get_channel_emotes(&username)
@@ -98,7 +144,7 @@ async fn emotes_by_username(
 
 async fn channel_emote_frame(
     Path((channel, name, frame)): Path<(String, String, String)>,
-    State(manager): State<EmoteManager>,
+    Extension(manager): Extension<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     let frame_requested = frame.to_lowercase();
     if !frame.ends_with(".webp") {
@@ -124,7 +170,7 @@ async fn channel_emote_frame(
 
 async fn channel_emote_info(
     Path((channel, name)): Path<(String, String)>,
-    State(manager): State<EmoteManager>,
+    Extension(manager): Extension<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     static CACHE_HEADER: LazyLock<HeaderValue> = LazyLock::new(|| {
         format!("max-age={}, public", { 60 * 60 * 15 })
@@ -145,7 +191,7 @@ async fn channel_emote_info(
 
 async fn channel_emote_atlas(
     Path((channel, name)): Path<(String, String)>,
-    State(manager): State<EmoteManager>,
+    Extension(manager): Extension<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     let emotes = manager.get_channel_emotes(&channel).await?;
     let info = emotes.get(&name).ok_or(PlatformError::EmoteNotFound)?;
@@ -160,7 +206,7 @@ async fn channel_emote_atlas(
 
 async fn twitch_emote_info(
     Path(id): Path<String>,
-    State(manager): State<EmoteManager>,
+    Extension(manager): Extension<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     static CACHE_HEADER: LazyLock<HeaderValue> = LazyLock::new(|| {
         format!("max-age={}, public", { 60 * 60 * 15 })
@@ -179,7 +225,7 @@ async fn twitch_emote_info(
 
 async fn twitch_emote_frame(
     Path((id, frame)): Path<(String, String)>,
-    State(manager): State<EmoteManager>,
+    Extension(manager): Extension<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     let frame_requested = frame.to_lowercase();
     if !frame.ends_with(".webp") {
@@ -203,7 +249,7 @@ async fn twitch_emote_frame(
 
 async fn twitch_emote_atlas(
     Path(id): Path<String>,
-    State(manager): State<EmoteManager>,
+    Extension(manager): Extension<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     let emote = manager.get_emote(Platform::Twitch, &id).await?;
 
@@ -216,14 +262,14 @@ async fn twitch_emote_atlas(
 
 async fn platform_global_emotes(
     Path(platform): Path<Platform>,
-    State(manager): State<EmoteManager>,
+    Extension(manager): Extension<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     Ok(Json::from(manager.get_global_emotes(platform).await?).into_response())
 }
 
 async fn platform_global_emote_info(
     Path((platform, emote)): Path<(Platform, String)>,
-    State(manager): State<EmoteManager>,
+    Extension(manager): Extension<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     static CACHE_HEADER: LazyLock<HeaderValue> = LazyLock::new(|| {
         format!("max-age={}, public", { 60 * 60 * 24 })
@@ -244,7 +290,7 @@ async fn platform_global_emote_info(
 
 async fn platform_global_emote_frame(
     Path((platform, emote, frame)): Path<(Platform, String, String)>,
-    State(manager): State<EmoteManager>,
+    Extension(manager): Extension<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     let frame_requested = frame.to_lowercase();
     if !frame.ends_with(".webp") {
@@ -271,7 +317,7 @@ async fn platform_global_emote_frame(
 
 async fn platform_global_emote_atlas(
     Path((platform, emote)): Path<(Platform, String)>,
-    State(manager): State<EmoteManager>,
+    Extension(manager): Extension<EmoteManager>,
 ) -> Result<Response<Body>, PlatformError> {
     match manager.get_global_emotes(platform).await?.get(&emote) {
         Some(info) => {

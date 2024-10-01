@@ -4,14 +4,11 @@ use std::{
 };
 
 use dashmap::DashMap;
-use http::{
-    header::ACCEPT,
-    HeaderName, HeaderValue,
-};
-use log::info;
+use http::{header::ACCEPT, HeaderName, HeaderValue};
 use reqwest::StatusCode;
 use serde::Deserialize;
 use tinyvec::TinyVec;
+use tracing::debug;
 
 use crate::{
     cache::Cache,
@@ -112,11 +109,11 @@ impl TwitchClient {
             LazyLock::new(|| url::Url::parse("https://api.twitch.tv/helix/users").unwrap());
 
         if let Some(hit) = self.user_id_cache.get(channel) {
-            info!("twitch id cache hit for {channel}");
+            debug!("twitch id cache hit for {channel}");
             return Ok(hit.clone());
         }
 
-        info!("requesting user id for {channel}");
+        debug!("requesting user id for {channel}");
         let mut url = USERS_ENDPOINT.clone();
         url.query_pairs_mut().append_pair("login", channel).finish();
 

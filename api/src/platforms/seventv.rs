@@ -6,10 +6,10 @@ use std::{
 };
 
 use dashmap::DashMap;
-use log::info;
 use reqwest::header::ACCEPT;
 use serde::Deserialize;
 use tokio::sync::OnceCell;
+use tracing::debug;
 
 use crate::{cache::Cache, emote::Emote};
 
@@ -50,12 +50,12 @@ impl EmotePlatform for SevenTvClient {
 
     async fn get_emote_by_id(&self, id: &str) -> Result<Emote, PlatformError> {
         if let Some(hit) = self.emote_cache.get(id) {
-            info!("cache hit for 7TV emote {id}");
+            debug!("cache hit for 7TV emote {id}");
 
             return Ok(hit.clone());
         }
 
-        info!("requesting 7TV emote {id}");
+        debug!("requesting 7TV emote {id}");
         let resp = self
             .client
             .get(format!("https://cdn.7tv.app/emote/{id}/4x.webp"))
@@ -104,11 +104,11 @@ impl EmotePlatform for SevenTvClient {
         for<'a> &'a Self::InternalEmoteType: IntoIterator<Item = ChannelEmote>,
     {
         if let Some(hit) = self.user_cache.get(twitch_id) {
-            info!("7TV channel emotes cache hit for {twitch_id}");
+            debug!("7TV channel emotes cache hit for {twitch_id}");
             return Ok(hit.clone());
         }
 
-        info!("requesting 7TV channel emotes for {twitch_id}");
+        debug!("requesting 7TV channel emotes for {twitch_id}");
 
         let emotes: Arc<UserEmotes> = Arc::new(
             self.client

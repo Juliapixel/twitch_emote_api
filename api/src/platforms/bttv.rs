@@ -5,10 +5,10 @@ use std::{
 };
 
 use dashmap::DashMap;
-use log::info;
 use reqwest::header::ACCEPT;
 use serde::Deserialize;
 use tokio::sync::OnceCell;
+use tracing::debug;
 
 use crate::{cache::Cache, emote::Emote, platforms::channel::ChannelEmote};
 
@@ -76,11 +76,11 @@ impl EmotePlatform for BttvClient {
 
     async fn get_emote_by_id(&self, id: &str) -> Result<Emote, PlatformError> {
         if let Some(hit) = self.emote_cache.get(id) {
-            info!("cache hit for BTTV emote {id}");
+            debug!("cache hit for BTTV emote {id}");
             return Ok(hit.clone());
         }
 
-        info!("requesting BTTV emote {id}");
+        debug!("requesting BTTV emote {id}");
         let resp = self
             .client
             .get(format!("https://cdn.betterttv.net/emote/{id}/3x"))
