@@ -23,8 +23,8 @@ pub enum EmoteError {
     BadUrl,
     #[error("request returned wrong MIME type: ")]
     WrongMimeType(HeaderValue),
-    #[error("request did not containt a Content-Type header")]
-    MissingContentTypeHeader,
+    #[error("request did not contain proper headers or wasn't a valid image")]
+    UnableToDetermineFormat,
 }
 
 // AWFUL code
@@ -105,26 +105,38 @@ impl Emote {
         resp: reqwest::Response,
         id: impl Into<Arc<str>>,
     ) -> Result<Self, EmoteError> {
-        if let Some(content_type) = resp.headers().get(reqwest::header::CONTENT_TYPE) {
-            let format = image::ImageFormat::from_mime_type(String::from_utf8_lossy(
-                content_type.as_bytes(),
-            ));
+        let bytes;
 
-            if let Some(format) = format {
-                let bytes = resp.bytes().await?;
-                // wow that looks awful
-                let id = Into::<Arc<str>>::into(id);
+        // either take from the headers or guess with magic bytes (because of
+        // fucking OpieOP emote and other weird twitch emotes)
+        let format = resp.headers().get(reqwest::header::CONTENT_TYPE)
+            .and_then(|h| {
+                image::ImageFormat::from_mime_type(String::from_utf8_lossy(
+                    h.as_bytes(),
+                ))
+            })
+            .or_else({
+                bytes = resp.bytes().await?;
+                || {
+                    image::ImageReader::new(Cursor::new(&bytes))
+                        .with_guessed_format()
+                        .ok()?
+                        .format()
+                }
+            });
 
-                let emote = tokio::task::spawn_blocking(move || Emote::try_new(&bytes, format, id))
-                    .await
-                    .expect("what.")?;
+        if let Some(format) = format {
+            // wow that looks awful
+            let id = Into::<Arc<str>>::into(id);
 
-                Ok(emote)
-            } else {
-                Err(EmoteError::WrongMimeType(content_type.to_owned()))
-            }
+            let emote = tokio::task::spawn_blocking(move || Emote::try_new(&bytes, format, id))
+                .await
+                .expect("what.")?;
+
+            Ok(emote)
+
         } else {
-            Err(EmoteError::MissingContentTypeHeader)
+            Err(EmoteError::UnableToDetermineFormat)
         }
     }
 }
