@@ -26,7 +26,6 @@
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json",
-    "postbuild": "./scripts/rename_mjs.sh",
     "preversion": "npm run build",
     "format": "prettier -w ."
   },
@@ -39,8 +38,10 @@
     "rimraf": "^6.0.1",
     "typescript": "^5.6.2"
   },
+  "peerDependencies": {
+    "three": ">= 0.160"
+  },
   "dependencies": {
-    "three": "^0.168.0",
     "tmi-js": "npm:tmi.js@^1.8.5"
   }
 }
