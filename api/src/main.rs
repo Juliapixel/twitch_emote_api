@@ -1,17 +1,21 @@
 use std::{os::unix::ffi::OsStrExt, sync::LazyLock, time::Duration};
 
-use twitch_emote_api::{
-    cli::ARGS,
-    emote::EmoteInfo,
-    platforms::{EmoteManager, Platform, PlatformError},
-};
 use axum::{
-    body::Body, extract::{Path, Extension}, response::{IntoResponse, Response}, routing::get, Extension as ExtensionLayer, Json
+    body::Body,
+    extract::{Extension, Path},
+    response::{IntoResponse, Response},
+    routing::get,
+    Extension as ExtensionLayer, Json,
 };
 use config::builder::DefaultState;
 use futures::FutureExt;
 use http::{header::CACHE_CONTROL, HeaderValue, StatusCode};
 use tokio::signal::unix::SignalKind;
+use twitch_emote_api::{
+    cli::ARGS,
+    emote::EmoteInfo,
+    platforms::{EmoteManager, Platform, PlatformError},
+};
 
 #[global_allocator]
 #[cfg(target_os = "linux")]
@@ -94,20 +98,20 @@ async fn main() -> Result<(), Box<dyn core::error::Error>> {
                         status_code = tracing::field::Empty,
                     )
                 })
-                .on_response(|response: &Response<Body>, latency: Duration, span: &tracing::Span| {
-                    span.record("latency_millis", latency.as_secs_f32() * 1000.0);
-                    span.record("status_code", response.status().as_u16());
-                    tracing::info!("request finished")
-                })
+                .on_response(
+                    |response: &Response<Body>, latency: Duration, span: &tracing::Span| {
+                        span.record("latency_millis", latency.as_secs_f32() * 1000.0);
+                        span.record("status_code", response.status().as_u16());
+                        tracing::info!("request finished")
+                    },
+                ),
         )
         // .layer(ExtensionLayer(pool))
-        .layer(
-            ExtensionLayer(
-                EmoteManager::new(ARGS.client_id.as_str(), ARGS.client_secret.as_str())
-                    .await
-                    .unwrap()
-            )
-        );
+        .layer(ExtensionLayer(
+            EmoteManager::new(ARGS.client_id.as_str(), ARGS.client_secret.as_str())
+                .await
+                .unwrap(),
+        ));
 
     let socket =
         tokio::net::TcpListener::bind((std::net::Ipv6Addr::UNSPECIFIED, ARGS.port)).await?;
