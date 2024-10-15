@@ -1,0 +1,10 @@
+.env
+target/
+
+Dockerfile
+.dockerignore
+
+# cargo-flamegraph and perf things
+perf.data
+perf.data.old
+flamegraph.svg
