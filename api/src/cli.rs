@@ -3,10 +3,7 @@ use std::sync::LazyLock;
 use clap::Parser;
 
 pub static ARGS: LazyLock<Args> = LazyLock::new(|| {
-    dotenvy::dotenv().expect(
-        "dotenvy should never fail unless you are in a very \
-        weird environment or ur .env file is malformed",
-    );
+    let _ = dotenvy::dotenv();
     Args::parse()
 });
 
