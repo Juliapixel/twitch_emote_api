@@ -1,10 +1,11 @@
 use std::{
     sync::{Arc, LazyLock},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use dashmap::DashMap;
 use http::{header::ACCEPT, HeaderName, HeaderValue};
+use parking_lot::RwLock;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use tinyvec::TinyVec;
@@ -20,36 +21,138 @@ use super::{channel::ChannelEmote, EmotePlatform, PlatformError};
 
 const ID_CACHE_MAX_AGE: Duration = Duration::from_secs(60 * 60 * 8);
 
-#[derive(Clone)]
-pub struct TwitchClient {
-    client: reqwest::Client,
-    client_id: Arc<str>,
-    client_secret: Arc<str>,
-    token: Arc<str>,
-    user_id_cache: Arc<Cache<String, String>>,
-    emote_cache: Arc<Cache<String, Emote>>,
+#[allow(clippy::unwrap_used, reason = "if this breaks i'll kms")]
+static OAUTH_URL: LazyLock<url::Url> =
+    LazyLock::new(|| url::Url::parse("https://id.twitch.tv/oauth2/token").unwrap());
+
+struct TwitchRefreshingToken {
+    http_client: reqwest::Client,
+    client_id: Box<str>,
+    client_secret: Box<str>,
+    token: RwLock<String>,
+    token_expiry: RwLock<Instant>,
 }
 
-impl std::fmt::Debug for TwitchClient {
+impl Clone for TwitchRefreshingToken {
+    fn clone(&self) -> Self {
+        Self {
+            http_client: self.http_client.clone(),
+            client_id: self.client_id.clone(),
+            client_secret: self.client_secret.clone(),
+            token: RwLock::new(self.token.read().clone()),
+            token_expiry: RwLock::new(*self.token_expiry.read()),
+        }
+    }
+}
+
+impl std::fmt::Debug for TwitchRefreshingToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TwitchClient")
-            .field("client", &self.client)
+        f.debug_struct("TwitchRefreshingToken")
+            .field("http_client", &self.http_client)
             .field("client_id", &self.client_id)
-            .field("client_secret", &"[debugger no debugging!]")
-            .field("token", &"[debugger no debugging!]")
+            .field("client_secret", &"[no snooping]")
+            .field("token", &"[no snooping]")
+            .field("token_expiry", &self.token_expiry)
             .finish()
     }
 }
 
+impl TwitchRefreshingToken {
+    pub async fn new(
+        http_client: reqwest::Client,
+        client_id: impl Into<Box<str>>,
+        client_secret: impl Into<Box<str>>,
+    ) -> Result<Self, PlatformError> {
+        let client_id: Box<str> = client_id.into();
+        let client_secret: Box<str> = client_secret.into();
+
+        let params = [
+            ("client_id", &*client_id),
+            ("client_secret", &*client_secret),
+            ("grant_type", "client_credentials"),
+        ];
+
+        let resp = http_client
+            .post(OAUTH_URL.clone())
+            .form(&params)
+            .send()
+            .await?;
+
+        let token = match resp.status() {
+            x if x.is_success() => resp.json::<OauthResponse>().await?,
+            StatusCode::UNAUTHORIZED => return Err(PlatformError::Unauthorized(Platform::Twitch)),
+            _ => {
+                return Err(PlatformError::RequestFailure(
+                    resp.error_for_status()
+                        .map_err(|e| e.without_url())
+                        .expect_err("must never be Ok"),
+                ))
+            }
+        };
+
+        Ok(Self {
+            http_client,
+            client_id,
+            client_secret,
+            token: RwLock::new(token.access_token),
+            token_expiry: RwLock::new(Instant::now() + Duration::from_secs(token.expires_in)),
+        })
+    }
+
+    async fn refresh_token(&self) -> Result<(), PlatformError> {
+        let params = [
+            ("client_id", &*self.client_id),
+            ("client_secret", &*self.client_secret),
+            ("grant_type", "client_credentials"),
+        ];
+
+        let resp = self
+            .http_client
+            .post(OAUTH_URL.clone())
+            .form(&params)
+            .send()
+            .await?;
+
+        let token = match resp.status() {
+            x if x.is_success() => resp.json::<OauthResponse>().await?,
+            StatusCode::UNAUTHORIZED => return Err(PlatformError::Unauthorized(Platform::Twitch)),
+            _ => {
+                return Err(PlatformError::RequestFailure(
+                    resp.error_for_status()
+                        .map_err(|e| e.without_url())
+                        .expect_err("must never be Ok"),
+                ))
+            }
+        };
+
+        *self.token.write() = token.access_token;
+        *self.token_expiry.write() = Instant::now() + Duration::from_secs(token.expires_in);
+        Ok(())
+    }
+
+    pub async fn get_token(&self) -> Result<String, PlatformError> {
+        if Instant::now() < *self.token_expiry.read() {
+            return Ok(self.token.read().to_string());
+        }
+
+        self.refresh_token().await?;
+        Ok(self.token.read().to_string())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TwitchClient {
+    client: reqwest::Client,
+    token: TwitchRefreshingToken,
+    user_id_cache: Arc<Cache<String, String>>,
+    emote_cache: Arc<Cache<String, Emote>>,
+}
+
 impl TwitchClient {
     pub async fn new(
-        client_id: impl Into<Arc<str>>,
-        client_secret: impl Into<Arc<str>>,
+        client_id: impl Into<Box<str>>,
+        client_secret: impl Into<Box<str>>,
     ) -> Result<Self, PlatformError> {
-        #[allow(clippy::unwrap_used, reason = "if this breaks i'll kms")]
-        static OAUTH_URL: LazyLock<url::Url> =
-            LazyLock::new(|| url::Url::parse("https://id.twitch.tv/oauth2/token").unwrap());
-
         let client_id = client_id.into();
         let client_secret = client_secret.into();
 
@@ -62,25 +165,7 @@ impl TwitchClient {
             )]))
             .build()?;
 
-        let params = [
-            ("client_id", &*client_id),
-            ("client_secret", &*client_secret),
-            ("grant_type", "client_credentials"),
-        ];
-
-        let resp = client.post(OAUTH_URL.clone()).form(&params).send().await?;
-
-        let token = match resp.status() {
-            x if x.is_success() => resp.json::<OauthResponse>().await?.access_token,
-            StatusCode::UNAUTHORIZED => return Err(PlatformError::Unauthorized(Platform::Twitch)),
-            _ => {
-                return Err(PlatformError::RequestFailure(
-                    resp.error_for_status()
-                        .map_err(|e| e.without_url())
-                        .expect_err("must never be Ok"),
-                ))
-            }
-        };
+        let token = TwitchRefreshingToken::new(client.clone(), client_id, client_secret).await?;
 
         let user_cache = Arc::new(Cache::new(ID_CACHE_MAX_AGE));
         let emote_cache = Arc::new(Cache::new(EMOTE_CACHE_MAX_AGE));
@@ -95,9 +180,7 @@ impl TwitchClient {
 
         Ok(Self {
             client,
-            client_id,
-            client_secret,
-            token: token.into(),
+            token,
             user_id_cache: user_cache,
             emote_cache,
         })
@@ -117,7 +200,12 @@ impl TwitchClient {
         let mut url = USERS_ENDPOINT.clone();
         url.query_pairs_mut().append_pair("login", channel).finish();
 
-        let resp = self.client.get(url).bearer_auth(&self.token).send().await?;
+        let resp = self
+            .client
+            .get(url)
+            .bearer_auth(self.token.get_token().await?)
+            .send()
+            .await?;
 
         match resp.status() {
             StatusCode::OK => {
@@ -184,7 +272,7 @@ impl EmotePlatform for TwitchClient {
         let globals = self
             .client
             .get("https://api.twitch.tv/helix/chat/emotes/global")
-            .bearer_auth(&self.token)
+            .bearer_auth(&self.token.get_token().await?)
             .send()
             .await?
             .json::<HelixResponse<Vec<TwitchEmote>>>()
@@ -221,11 +309,10 @@ pub enum TwitchEmoteFormat {
 #[derive(Debug, Deserialize)]
 pub struct UserResponse {
     id: String,
-    login: String,
-    display_name: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct OauthResponse {
     access_token: String,
+    expires_in: u64,
 }

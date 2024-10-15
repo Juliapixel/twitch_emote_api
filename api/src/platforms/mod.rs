@@ -25,7 +25,7 @@ pub use twitch::TwitchClient;
 
 pub const EMOTE_CACHE_MAX_AGE: Duration = Duration::from_secs(60 * 60 * 8);
 pub const EMOTE_CACHE_EVICTION_INTERVAL: Duration = Duration::from_secs(60 * 15);
-pub const USER_CACHE_MAX_AGE: Duration = Duration::from_secs(60 * 15);
+pub const USER_CACHE_MAX_AGE: Duration = Duration::from_secs(60 * 5);
 pub const USER_CACHE_EVICTION_INTERVAL: Duration = Duration::from_secs(60 * 15);
 
 pub trait EmotePlatform {
@@ -123,8 +123,8 @@ pub struct EmoteManager {
 
 impl EmoteManager {
     pub async fn new(
-        twitch_client_id: impl Into<Arc<str>>,
-        twitch_client_secret: impl Into<Arc<str>>,
+        twitch_client_id: impl Into<Box<str>>,
+        twitch_client_secret: impl Into<Box<str>>,
     ) -> Result<Self, PlatformError> {
         Ok(Self {
             twitch: TwitchClient::new(twitch_client_id.into(), twitch_client_secret.into()).await?,
