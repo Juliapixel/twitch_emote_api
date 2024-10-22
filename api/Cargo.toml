@@ -3,9 +3,6 @@ name = "twitch_emote_api"
 version = "0.1.0"
 edition = "2021"
 
-[profile.release]
-debug=true
-
 [dependencies]
 axum = { version = "0.7", features = ["http2", "macros"] }
 bytes = "1.7"
@@ -17,7 +14,7 @@ either = { version = "1.13", features = ["serde"] }
 futures = "0.3"
 hashbrown = { version = "0.14", features = ["serde"] }
 http = "1.1"
-image = "0.25"
+image = ">=0.25.4"
 jemallocator = "0.5"
 mime = "0.3"
 parking_lot = "0.12"
@@ -34,11 +31,6 @@ tower-http = { version = "0.5", features = ["compression-br", "compression-gzip"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 url = "2.5"
-
-# image-webp is bugged on current releases erm!
-[patch.crates-io]
-image-webp = { git = "https://github.com/image-rs/image-webp.git", rev = "c29d6d4587618b43fb8ddeed46638fca86ad0291" }
-image = { git = "https://github.com/juliapixel/image.git", branch = "webp_patch" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 jemallocator = "0.5"
