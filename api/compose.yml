@@ -9,4 +9,6 @@ services:
         pull_policy: never
         ports:
             - "10036:8080"
-        env_file: ".env"
+        env_file:
+            - path: .env
+              required: false
