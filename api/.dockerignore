@@ -3,6 +3,7 @@ target/
 
 Dockerfile
 .dockerignore
+compose.yml
 
 # cargo-flamegraph and perf things
 perf.data

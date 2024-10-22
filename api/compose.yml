@@ -1,0 +1,12 @@
+services:
+    emote_api:
+        restart: unless-stopped
+        build:
+            context: .
+            tags:
+                - twitch_emote_api:latest
+        image: twitch_emote_api:latest
+        pull_policy: never
+        ports:
+            - "10036:8080"
+        env_file: ".env"
