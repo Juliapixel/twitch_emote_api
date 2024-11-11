@@ -1,5 +1,6 @@
 [package]
 name = "twitch_emote_api"
+license = "MIT"
 version = "0.1.0"
 edition = "2021"
 

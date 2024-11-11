@@ -2,6 +2,7 @@
   "name": "twitch-emote-client",
   "version": "0.1.1",
   "description": "a twitch and third-party emote client",
+  "license": "MIT",
   "repository": {
     "directory": "twitch-emote-client",
     "url": "https://github.com/Juliapixel/twitch_emote_api"
