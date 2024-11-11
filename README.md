@@ -1,11 +1,13 @@
 # twitch_emote_api (WIP)
-very overengineered, very cool API to let you find out what awesome third party
-emotes your favorite streamer has, and also download every frame of them separately
-in WebP format
+![NPM Version](https://img.shields.io/npm/v/twitch-emote-client)
 
-ALSO THE TS CODE IS A HUGE MESS PLEASE DONT JUDGE ME
+very overengineered, very cool API to let you find out what awesome third party
+emotes your favorite streamer has, and also download every frame of them either
+separetely in WebP format or as a texture atlas!
+
+use the heckin [NPM library](https://www.npmjs.com/package/twitch-emote-client)
+
+<sub>please self host the api, my poor oracle cloud instance can't handle much more.........</sub>
 
 ## endpoints
 erm read [main.rs](api/src/main.rs) and good luck, for now
-
-<sub>*also, it's gonna have a JS library thingy which is gonna be cool and awesome*</sub>
