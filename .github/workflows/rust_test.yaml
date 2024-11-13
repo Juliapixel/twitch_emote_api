@@ -1,0 +1,23 @@
+name: Rust Build and Test
+
+env:
+  CARGO_TERM_COLOR: always
+
+on:
+  push:
+    paths: "api/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: "api"
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install nightly compiler
+      run: rustup toolchain install nightly
+    - name: Build
+      run: cargo +nightly build --verbose
+    - name: Run tests
+      run: cargo +nightly test --verbose

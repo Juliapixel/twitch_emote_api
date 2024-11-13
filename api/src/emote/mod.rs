@@ -109,12 +109,10 @@ impl Emote {
 
         // either take from the headers or guess with magic bytes (because of
         // fucking OpieOP emote and other weird twitch emotes)
-        let format = resp.headers().get(reqwest::header::CONTENT_TYPE)
-            .and_then(|h| {
-                image::ImageFormat::from_mime_type(String::from_utf8_lossy(
-                    h.as_bytes(),
-                ))
-            })
+        let format = resp
+            .headers()
+            .get(reqwest::header::CONTENT_TYPE)
+            .and_then(|h| image::ImageFormat::from_mime_type(String::from_utf8_lossy(h.as_bytes())))
             .or_else({
                 bytes = resp.bytes().await?;
                 || {
@@ -134,7 +132,6 @@ impl Emote {
                 .expect("what.")?;
 
             Ok(emote)
-
         } else {
             Err(EmoteError::UnableToDetermineFormat)
         }

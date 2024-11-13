@@ -7,6 +7,6 @@ tab_width = 4
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-[{*.json, *.yaml, *.yml}]
+[*.{json,yaml,yml}]
 tab_width = 2
 indent_size = 2

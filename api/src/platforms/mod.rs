@@ -295,6 +295,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(on_ci, should_panic)]
     async fn twitch_test() {
         let client_id = dotenvy::var("TWITCH_CLIENT_ID").unwrap();
         let client_secret = dotenvy::var("TWITCH_CLIENT_SECRET").unwrap();
