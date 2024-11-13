@@ -63,13 +63,13 @@ export class EmotesClient {
         );
     }
 
-    /** please call this before dropping xqcL */
+    /** please call this before dropping elisLove */
     close() {
         this.chatClient.disconnect();
         clearInterval(this.refreshInterval);
     }
 
-    async handleMessage(
+    private async handleMessage(
         channel: string,
         state: ChatUserstate,
         message: string,

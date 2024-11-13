@@ -1,4 +1,3 @@
-import { ChatUserstate } from "tmi-js";
 export interface ClientConfig {
     channels: string[];
     maxEmotesPerMessage: number;
@@ -29,9 +28,9 @@ export declare class EmotesClient {
     private refreshInterval;
     private chatClient;
     constructor(config: Partial<ClientConfig>);
-    /** please call this before dropping xqcL */
+    /** please call this before dropping elisLove */
     close(): void;
-    handleMessage(channel: string, state: ChatUserstate, message: string, _self: boolean): Promise<void>;
+    private handleMessage;
     updateChannelEmotes(channel: string): Promise<void>;
     updateGlobalEmotes(): Promise<void>;
     on(event: "emote", callback: EmoteCallback): void;

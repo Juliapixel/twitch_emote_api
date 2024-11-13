@@ -22,7 +22,7 @@ export class EmotesClient {
             this.config.channels.forEach((c) => this.updateChannelEmotes(c));
         }, 1000 * 60 * 15);
     }
-    /** please call this before dropping xqcL */
+    /** please call this before dropping elisLove */
     close() {
         this.chatClient.disconnect();
         clearInterval(this.refreshInterval);
