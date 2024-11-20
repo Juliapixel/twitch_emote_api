@@ -250,10 +250,10 @@ mod tests {
 
     #[tokio::test]
     async fn seventv_test() {
-        // FeelsGoodMan
-        const STATIC_EMOTE_ID: &str = "630660200e929d2fde44db5b";
-        // RareParrot
-        const ANIMATED_EMOTE_ID: &str = "63071ba3449e6f5ff95cca6d";
+        // OMEGALUL
+        const STATIC_EMOTE_ID: &str = "01F00Z3A9G0007E4VV006YKSK9";
+        // DIESOFCRINGE
+        const ANIMATED_EMOTE_ID: &str = "01FCX95ZG80009QXBMY7YYTVBJ";
 
         let client = SevenTvClient::new();
         client.get_channel_emotes(TWITCH_ID).await.unwrap();
