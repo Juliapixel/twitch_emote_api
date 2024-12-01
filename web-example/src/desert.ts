@@ -125,15 +125,7 @@ gltfLoader.load("/cacti.glb", (glb) => {
 scene.add(new AmbientLight("#2445FF", 10));
 scene.background = new Color("#6899d9");
 
-let sky = new Sky();
-sky.scale.setScalar(1000);
-const sunPosition = sunDir;
-
-sky.material.uniforms.sunPosition.value = sunPosition;
-
-// scene.add(sky);
-
-const renderer = new WebGLRenderer({ antialias: false });
+const renderer = new WebGLRenderer({ antialias: false, precision: "highp", stencil: false, depth: false });
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 // same as blender
@@ -148,11 +140,11 @@ composer.setSize(window.innerWidth, window.innerHeight);
 
 composer.addPass(new RenderPass(scene, camera));
 
-let ssaoPass = new SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
-composer.addPass(ssaoPass);
-
 let smaaPass = new SMAAPass(window.innerWidth, window.innerHeight);
 composer.addPass(smaaPass);
+
+let ssaoPass = new SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
+composer.addPass(ssaoPass);
 
 let bloomPass = new UnrealBloomPass(
     new Vector2(window.innerWidth, window.innerHeight),
