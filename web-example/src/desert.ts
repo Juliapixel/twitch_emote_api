@@ -282,7 +282,7 @@ const spawnEmote = (emotes: CallbackEmoteInfo[], channel: string) => {
             // make it not float or sink
             obj.position.z = 0.6;
             // make it point the right way
-            obj.rotateX(-90);
+            obj.rotateX(-Math.PI / 2);
 
             group.add(obj);
             processedEmotes++;
