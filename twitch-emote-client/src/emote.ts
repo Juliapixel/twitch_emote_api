@@ -15,6 +15,7 @@ export class EmoteObject extends Mesh {
     ) {
         let geometry = new PlaneGeometry();
         super(geometry);
+        this.name = `${channel}.${emoteInfo.name}`;
         this.material = new EmoteMaterial(channel, emoteInfo, apiUrl, (mat) => {
             this.material = mat;
             this.scale.x = mat.aspectRatio;
