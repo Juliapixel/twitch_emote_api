@@ -29,10 +29,7 @@ export interface ChannelEmote {
 
 export type CallbackEmoteInfo = ChannelEmote & { source: string };
 
-export type EmoteCallback = (
-    emotes: CallbackEmoteInfo[],
-    source: string
-) => void;
+export type EmoteCallback = (emotes: CallbackEmoteInfo[], source: string) => void;
 
 export class EmotesClient {
     public config: ClientConfig;
