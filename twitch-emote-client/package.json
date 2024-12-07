@@ -1,6 +1,6 @@
 {
   "name": "twitch-emote-client",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "a twitch and third-party emote client",
   "license": "MIT",
   "repository": {
