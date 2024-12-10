@@ -6,6 +6,7 @@ in your three.js projects POGGERS
 ## Usage
 
 basic stuff like:
+
 ```js
 let client = new EmotesClient({ channels: ["julialuxel"] });
 let loader = new EmoteLoader(new LoadingManager(), client.config.emotesApi);

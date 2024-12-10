@@ -1,26 +1,63 @@
 import { Mesh, PlaneGeometry } from "three";
-import { EmoteMaterial } from "./material.js";
+import {
+    EmoteBasicMaterial,
+    EmoteStandardMaterial,
+    MaterialKind
+} from "./material.js";
 import { ChannelEmote } from "./client.js";
 
 type OnLoadHandler = (emote: EmoteObject) => Promise<any> | any;
 
 export class EmoteObject extends Mesh {
-    material: EmoteMaterial;
+    material: EmoteBasicMaterial | EmoteStandardMaterial;
 
     constructor(
         channel: string,
         apiUrl: string,
         emoteInfo: ChannelEmote,
+        /** @default MaterialKind.Basic */
+        materialKind?: MaterialKind,
         onLoad?: OnLoadHandler
     ) {
         let geometry = new PlaneGeometry();
+
         super(geometry);
+
+        let kind: MaterialKind;
+        if (materialKind === undefined) {
+            kind = MaterialKind.Basic;
+        } else {
+            kind = materialKind;
+        }
+
         this.name = `${channel}.${emoteInfo.name}`;
-        this.material = new EmoteMaterial(channel, emoteInfo, apiUrl, (mat) => {
-            this.material = mat;
-            this.scale.x = mat.aspectRatio;
-            onLoad ? onLoad(this) : {};
-        });
+
+        switch (kind) {
+            case MaterialKind.Basic:
+                this.material = new EmoteBasicMaterial(
+                    channel,
+                    emoteInfo,
+                    apiUrl,
+                    (mat) => {
+                        this.material = mat;
+                        this.scale.x = mat.aspectRatio;
+                        onLoad ? onLoad(this) : {};
+                    }
+                );
+                break;
+            case MaterialKind.Standard:
+                this.material = new EmoteStandardMaterial(
+                    channel,
+                    emoteInfo,
+                    apiUrl,
+                    (mat) => {
+                        this.material = mat;
+                        this.scale.x = mat.aspectRatio;
+                        onLoad ? onLoad(this) : {};
+                    }
+                );
+                break;
+        }
     }
 
     animateTexture(timestamp: number) {

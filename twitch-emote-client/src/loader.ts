@@ -1,12 +1,20 @@
 import { Loader } from "three";
 import { EmoteObject } from "./emote";
 import { LoadingManager } from "three";
-import { CallbackEmoteInfo, ChannelEmote } from "./client";
+import { CallbackEmoteInfo } from "./client";
+import { MaterialKind } from "./material";
 
 export class EmoteLoader extends Loader<EmoteObject, CallbackEmoteInfo> {
-    constructor(manager: LoadingManager | undefined, apiUrl: string) {
+    materialKind: MaterialKind;
+
+    constructor(
+        manager: LoadingManager | undefined,
+        apiUrl: string,
+        materialKind: MaterialKind
+    ) {
         super(manager);
         this.path = apiUrl;
+        this.materialKind = materialKind;
     }
 
     load(
@@ -16,11 +24,27 @@ export class EmoteLoader extends Loader<EmoteObject, CallbackEmoteInfo> {
         onError?: (err: unknown) => void
     ): void {
         try {
-            new EmoteObject(emote.source, this.path, emote, (e) => onLoad(e));
+            new EmoteObject(emote.source, this.path, emote, this.materialKind, (e) =>
+                onLoad(e)
+            );
         } catch (e) {
             if (onError) {
                 onError(e);
             }
         }
+    }
+
+    loadAsync(
+        emote: CallbackEmoteInfo,
+        onProgress?: (event: ProgressEvent) => void
+    ): Promise<EmoteObject> {
+        return new Promise((resolve, reject) => {
+            this.load(
+                emote,
+                (obj) => resolve(obj),
+                onProgress,
+                (err) => reject(err)
+            );
+        });
     }
 }

@@ -1,15 +1,35 @@
 import { Mesh, PlaneGeometry } from "three";
-import { EmoteMaterial } from "./material.js";
+import { EmoteBasicMaterial, EmoteStandardMaterial, MaterialKind } from "./material.js";
 export class EmoteObject extends Mesh {
-    constructor(channel, apiUrl, emoteInfo, onLoad) {
+    constructor(channel, apiUrl, emoteInfo, 
+    /** @default MaterialKind.Basic */
+    materialKind, onLoad) {
         let geometry = new PlaneGeometry();
         super(geometry);
+        let kind;
+        if (materialKind === undefined) {
+            kind = MaterialKind.Basic;
+        }
+        else {
+            kind = materialKind;
+        }
         this.name = `${channel}.${emoteInfo.name}`;
-        this.material = new EmoteMaterial(channel, emoteInfo, apiUrl, (mat) => {
-            this.material = mat;
-            this.scale.x = mat.aspectRatio;
-            onLoad ? onLoad(this) : {};
-        });
+        switch (kind) {
+            case MaterialKind.Basic:
+                this.material = new EmoteBasicMaterial(channel, emoteInfo, apiUrl, (mat) => {
+                    this.material = mat;
+                    this.scale.x = mat.aspectRatio;
+                    onLoad ? onLoad(this) : {};
+                });
+                break;
+            case MaterialKind.Standard:
+                this.material = new EmoteStandardMaterial(channel, emoteInfo, apiUrl, (mat) => {
+                    this.material = mat;
+                    this.scale.x = mat.aspectRatio;
+                    onLoad ? onLoad(this) : {};
+                });
+                break;
+        }
     }
     animateTexture(timestamp) {
         let uvs = this.material.animateTexture(timestamp);
