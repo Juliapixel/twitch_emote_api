@@ -1,35 +1,13 @@
 import { Mesh, PlaneGeometry } from "three";
-import { EmoteBasicMaterial, EmoteStandardMaterial, MaterialKind } from "./material.js";
+/**
+ * Plane mesh with texture corresponding to a twitch chat emote
+ */
 export class EmoteObject extends Mesh {
-    constructor(channel, apiUrl, emoteInfo, 
-    /** @default MaterialKind.Basic */
-    materialKind, onLoad) {
+    constructor(material) {
         let geometry = new PlaneGeometry();
         super(geometry);
-        let kind;
-        if (materialKind === undefined) {
-            kind = MaterialKind.Basic;
-        }
-        else {
-            kind = materialKind;
-        }
-        this.name = `${channel}.${emoteInfo.name}`;
-        switch (kind) {
-            case MaterialKind.Basic:
-                this.material = new EmoteBasicMaterial(channel, emoteInfo, apiUrl, (mat) => {
-                    this.material = mat;
-                    this.scale.x = mat.aspectRatio;
-                    onLoad ? onLoad(this) : {};
-                });
-                break;
-            case MaterialKind.Standard:
-                this.material = new EmoteStandardMaterial(channel, emoteInfo, apiUrl, (mat) => {
-                    this.material = mat;
-                    this.scale.x = mat.aspectRatio;
-                    onLoad ? onLoad(this) : {};
-                });
-                break;
-        }
+        this.material = material;
+        this.scale.x = this.material.map.aspectRatio;
     }
     animateTexture(timestamp) {
         let uvs = this.material.animateTexture(timestamp);

@@ -31,6 +31,10 @@ export type CallbackEmoteInfo = ChannelEmote & { source: string };
 
 export type EmoteCallback = (emotes: CallbackEmoteInfo[], source: string) => void;
 
+/**
+ * Twitch chat client that listens to messages in chatrooms and parses emotes
+ * in them
+ */
 export class EmotesClient {
     public config: ClientConfig;
     private emoteCache: Map<string, Map<string, ChannelEmote>> = new Map();

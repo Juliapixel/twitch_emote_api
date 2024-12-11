@@ -8,56 +8,17 @@ import { ChannelEmote } from "./client.js";
 
 type OnLoadHandler = (emote: EmoteObject) => Promise<any> | any;
 
+/**
+ * Plane mesh with texture corresponding to a twitch chat emote
+ */
 export class EmoteObject extends Mesh {
     material: EmoteBasicMaterial | EmoteStandardMaterial;
 
-    constructor(
-        channel: string,
-        apiUrl: string,
-        emoteInfo: ChannelEmote,
-        /** @default MaterialKind.Basic */
-        materialKind?: MaterialKind,
-        onLoad?: OnLoadHandler
-    ) {
+    constructor(material: EmoteBasicMaterial | EmoteStandardMaterial) {
         let geometry = new PlaneGeometry();
-
         super(geometry);
-
-        let kind: MaterialKind;
-        if (materialKind === undefined) {
-            kind = MaterialKind.Basic;
-        } else {
-            kind = materialKind;
-        }
-
-        this.name = `${channel}.${emoteInfo.name}`;
-
-        switch (kind) {
-            case MaterialKind.Basic:
-                this.material = new EmoteBasicMaterial(
-                    channel,
-                    emoteInfo,
-                    apiUrl,
-                    (mat) => {
-                        this.material = mat;
-                        this.scale.x = mat.aspectRatio;
-                        onLoad ? onLoad(this) : {};
-                    }
-                );
-                break;
-            case MaterialKind.Standard:
-                this.material = new EmoteStandardMaterial(
-                    channel,
-                    emoteInfo,
-                    apiUrl,
-                    (mat) => {
-                        this.material = mat;
-                        this.scale.x = mat.aspectRatio;
-                        onLoad ? onLoad(this) : {};
-                    }
-                );
-                break;
-        }
+        this.material = material;
+        this.scale.x = this.material.map.aspectRatio;
     }
 
     animateTexture(timestamp: number) {

@@ -4,6 +4,10 @@ const defaultConfig = {
     maxEmotesPerMessage: 5,
     emotesApi: "https://overlay-api.juliapixel.com"
 };
+/**
+ * Twitch chat client that listens to messages in chatrooms and parses emotes
+ * in them
+ */
 export class EmotesClient {
     constructor(config) {
         this.emoteCache = new Map();

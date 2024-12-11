@@ -1,5 +1,6 @@
 import { Vector2 } from "three";
-export class AtlasTexture {
+/** information for a texture atlas containing every animation frame of an emote */
+export class AtlasTextureInfo {
     constructor(x_size, y_size, delays) {
         this.x_size = x_size;
         this.y_size = y_size;
@@ -33,4 +34,4 @@ export class AtlasTexture {
         throw new Error("frame not found? wtf?");
     }
 }
-//# sourceMappingURL=atlas.js.map
+//# sourceMappingURL=texture.js.map

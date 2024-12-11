@@ -1,6 +1,12 @@
-import { Vector2 } from "three";
+import { Texture, Vector2 } from "three";
 
-export class AtlasTexture {
+export interface EmoteTexture extends Texture {
+    atlasInfo?: AtlasTextureInfo;
+    aspectRatio: number;
+}
+
+/** information for a texture atlas containing every animation frame of an emote */
+export class AtlasTextureInfo {
     public x_size: number;
     public y_size: number;
     private delays: number[];

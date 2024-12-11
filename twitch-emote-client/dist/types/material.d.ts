@@ -1,6 +1,5 @@
-import { MeshBasicMaterial, MeshStandardMaterial, Vector2 } from "three";
-import { ChannelEmote } from "./client.js";
-import { AtlasTexture } from "./atlas.js";
+import { MeshBasicMaterial, MeshBasicMaterialParameters, MeshStandardMaterial, MeshStandardMaterialParameters, Vector2 } from "three";
+import { EmoteTexture } from "./texture.js";
 /** kind of material used for the emote object */
 export declare enum MaterialKind {
     /** MeshBasicMaterial */
@@ -9,26 +8,21 @@ export declare enum MaterialKind {
     Standard = 1
 }
 interface IEmoteMaterial {
-    animationLength: number;
-    aspectRatio: number;
-    isAnimated: boolean;
-    atlasTex?: AtlasTexture;
+    map: EmoteTexture;
     animateTexture(timestamp: number): Vector2[] | undefined;
 }
 export declare class EmoteBasicMaterial extends MeshBasicMaterial implements IEmoteMaterial {
-    animationLength: number;
-    aspectRatio: number;
-    isAnimated: boolean;
-    atlasTex?: AtlasTexture;
-    constructor(source: string, emote: ChannelEmote, apiUrl: string, onLoad?: (mat: EmoteBasicMaterial) => void | Promise<void>);
+    map: EmoteTexture;
+    constructor(params: MeshBasicMaterialParameters & {
+        map: EmoteTexture;
+    });
     animateTexture(timestamp: number): Vector2[] | undefined;
 }
 export declare class EmoteStandardMaterial extends MeshStandardMaterial implements IEmoteMaterial {
-    animationLength: number;
-    aspectRatio: number;
-    isAnimated: boolean;
-    atlasTex?: AtlasTexture;
-    constructor(source: string, emote: ChannelEmote, apiUrl: string, onLoad?: (mat: EmoteStandardMaterial) => void | Promise<void>);
+    map: EmoteTexture;
+    constructor(params: MeshStandardMaterialParameters & {
+        map: EmoteTexture;
+    });
     animateTexture(timestamp: number): Vector2[] | undefined;
 }
 export {};

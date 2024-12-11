@@ -1,13 +1,11 @@
 import { Mesh } from "three";
-import { EmoteBasicMaterial, EmoteStandardMaterial, MaterialKind } from "./material.js";
-import { ChannelEmote } from "./client.js";
-type OnLoadHandler = (emote: EmoteObject) => Promise<any> | any;
+import { EmoteBasicMaterial, EmoteStandardMaterial } from "./material.js";
+/**
+ * Plane mesh with texture corresponding to a twitch chat emote
+ */
 export declare class EmoteObject extends Mesh {
     material: EmoteBasicMaterial | EmoteStandardMaterial;
-    constructor(channel: string, apiUrl: string, emoteInfo: ChannelEmote, 
-    /** @default MaterialKind.Basic */
-    materialKind?: MaterialKind, onLoad?: OnLoadHandler);
+    constructor(material: EmoteBasicMaterial | EmoteStandardMaterial);
     animateTexture(timestamp: number): void;
 }
-export {};
 //# sourceMappingURL=emote.d.ts.map
