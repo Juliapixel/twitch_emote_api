@@ -1,5 +1,7 @@
 # twitch-emote-client
 
+![NPM Version](https://img.shields.io/npm/v/twitch-emote-client)
+
 it's a library that helps you use twitch chat emotes (native, BTTV, FFZ and 7TV)
 in your three.js projects POGGERS
 
